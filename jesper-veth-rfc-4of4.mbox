@@ -1,0 +1,59 @@
+From MAILER-DAEMON Mon Sep 21 22:00:00 2026
+Subject: [PATCH net-next RFC v1 4/4] veth: when XDP is loaded increase
+ needed_headroom
+From: Jesper Dangaard Brouer <hawk@kernel.org>
+To: netdev@vger.kernel.org, edumazet@google.com
+Cc: Jesper Dangaard Brouer <hawk@kernel.org>, pabeni@redhat.com,
+ kuba@kernel.org, davem@davemloft.net, lorenzo@kernel.org,
+ Ilias Apalodimas <ilias.apalodimas@linaro.org>, mtahhan@redhat.com,
+ huangjie.albert@bytedance.com, Yunsheng Lin <linyunsheng@huawei.com>,
+ Liang Chen <liangchen.linux@gmail.com>
+Date: Tue, 22 Aug 2023 19:59:26 +0200
+Message-ID: <169272716651.1975370.10514711233878278884.stgit@firesoul>
+In-Reply-To: <169272709850.1975370.16698220879817216294.stgit@firesoul>
+References: <169272709850.1975370.16698220879817216294.stgit@firesoul>
+User-Agent: StGit/1.4
+Precedence: bulk
+X-Mailing-List: netdev@vger.kernel.org
+List-Id: <netdev.vger.kernel.org>
+List-Subscribe: <mailto:netdev+subscribe@vger.kernel.org>
+List-Unsubscribe: <mailto:netdev+unsubscribe@vger.kernel.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+
+When sending (sendmsg) SKBs out an veth device, the SKB headroom is too small
+to satisfy XDP on the receiving veth peer device.
+
+For AF_XDP (normal non-zero-copy) it is worth noticing that xsk_build_skb()
+adjust headroom according to dev->needed_headroom. Other parts of the kernel
+also take this into account (see macro LL_RESERVED_SPACE).
+
+This solves the XDP_PACKET_HEADROOM check in veth_convert_skb_to_xdp_buff().
+
+Signed-off-by: Jesper Dangaard Brouer <hawk@kernel.org>
+---
+ drivers/net/veth.c |    2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/drivers/net/veth.c b/drivers/net/veth.c
+index 8e117cc44fda..3630e9124071 100644
+--- a/drivers/net/veth.c
++++ b/drivers/net/veth.c
+@@ -1649,6 +1649,7 @@ static int veth_xdp_set(struct net_device *dev, struct bpf_prog *prog,
+ 		if (!old_prog) {
+ 			peer->hw_features &= ~NETIF_F_GSO_SOFTWARE;
+ 			peer->max_mtu = max_mtu;
++			veth_set_rx_headroom(dev, XDP_PACKET_HEADROOM);
+ 		}
+ 
+ 		xdp_features_set_redirect_target(peer, true);
+@@ -1666,6 +1667,7 @@ static int veth_xdp_set(struct net_device *dev, struct bpf_prog *prog,
+ 				peer->hw_features |= NETIF_F_GSO_SOFTWARE;
+ 				peer->max_mtu = ETH_MAX_MTU;
+ 			}
++			veth_set_rx_headroom(dev, -1);
+ 		}
+ 		bpf_prog_put(old_prog);
+ 	}
+

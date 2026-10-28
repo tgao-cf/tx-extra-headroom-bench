@@ -1,0 +1,6 @@
+tx_extra_headroom, tc: pskb_expand_head on vethB0, median (range); datagrams seen by tc, median (range)
+0 tc      500003 (500003-500003, 5 rounds)     500003 (500003-500003, 5 rounds)
+64 tc     0 (0-0, 5 rounds)                    500003 (500003-500003, 5 rounds)
+128 tc    0 (0-0, 5 rounds)                    500003 (500003-500003, 5 rounds)
+256 tc    0 (0-0, 5 rounds)                    500003 (500003-500003, 5 rounds)
+256 idle  0 (0-0, 5 rounds)                    NA (NA-NA, 5 rounds)

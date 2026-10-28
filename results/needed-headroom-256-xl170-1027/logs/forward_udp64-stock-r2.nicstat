@@ -1,0 +1,2 @@
+before:  rx_xdp_drop: 0 rx_buff_alloc_err: 0 rx_out_of_buffer: 91030445 rx_packets_phy: 275765575 rx_discards_phy: 0 
+after:  rx_xdp_drop: 0 rx_buff_alloc_err: 0 rx_out_of_buffer: 103538613 rx_packets_phy: 308672512 rx_discards_phy: 0 

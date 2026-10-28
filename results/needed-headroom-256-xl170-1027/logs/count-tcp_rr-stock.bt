@@ -1,0 +1,13 @@
+
+
+
+
+
+@out[vethB1]: 418216
+@out[vethB0]: 418220
+@out_headroom_at_ip[vethB0, 196]: 2
+@out_headroom_at_ip[vethB1, 196]: 2
+@out_headroom_at_ip[vethB1, 204]: 418214
+@out_headroom_at_ip[vethB0, 204]: 418218
+@vethB1_copy: 418221
+@vethB1_xdp_rcv: 418221

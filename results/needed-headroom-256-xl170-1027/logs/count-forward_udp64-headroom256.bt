@@ -1,0 +1,13 @@
+
+
+@expand[ens1f1np1, ip_forward]: 71424
+@fwd[vethB0]: 6
+@fwd[ens1f1np1]: 71424
+@fwd_headroom_at_ip[vethB0, 272]: 6
+@fwd_headroom_at_ip[ens1f1np1, 270]: 71424
+@out[vethB1]: 6
+@out[vethB0]: 71424
+@out_headroom_at_ip[vethB1, 272]: 6
+@out_headroom_at_ip[vethB0, 334]: 71424
+@vethB1_copy: 71425
+@vethB1_xdp_rcv: 71425

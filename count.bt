@@ -1,0 +1,7 @@
+// count.bt <nic>: skbs at ip_forward() and ip_finish_output2(), pskb_expand_head() calls by caller,
+// and the copy check on vethB1, per device. x86: at function entry *sp is the return address.
+kprobe:ip_forward { $s = (struct sk_buff *)arg0; $d = $s->dev->name; if ($d == str($1) || $d == "vethB0") { @fwd[$d] = count(); @fwd_headroom_at_ip[$d, (uint64)$s->data - (uint64)$s->head] = count(); } }
+kprobe:ip_finish_output2 { $s = (struct sk_buff *)arg2; $d = $s->dev->name; if ($d == "vethB0" || $d == "vethB1") { @out[$d] = count(); @out_headroom_at_ip[$d, (uint64)$s->data - (uint64)$s->head] = count(); } }
+kprobe:pskb_expand_head { $s = (struct sk_buff *)arg0; $d = $s->dev->name; if ($d == str($1) || $d == "vethB0" || $d == "vethB1") { @expand[$d, ksym(*(uint64 *)reg("sp"))] = count(); } }
+kprobe:veth_xdp_rcv_skb { $s = (struct sk_buff *)arg1; if ($s->dev->name == "vethB1") { @vethB1_xdp_rcv = count(); } }
+kprobe:skb_pp_cow_data { $s = *(struct sk_buff **)arg1; if ($s->dev->name == "vethB1") { @vethB1_copy = count(); } }

@@ -1,0 +1,24 @@
+
+
+@expand[vethB0, ip_forward]: 9
+@expand[ens1f1np1, ___pskb_trim]: 171854
+@fwd[ens1f1np1]: 90895
+@fwd[vethB0]: 560954
+@fwd_headroom_at_ip[vethB0, 196]: 2
+@fwd_headroom_at_ip[vethB0, 176]: 19
+@fwd_headroom_at_ip[vethB0, 184]: 36
+@fwd_headroom_at_ip[vethB0, 192]: 427
+@fwd_headroom_at_ip[vethB0, 16]: 1036
+@fwd_headroom_at_ip[ens1f1np1, 270]: 90895
+@fwd_headroom_at_ip[vethB0, 204]: 559434
+@out[vethB0]: 90895
+@out[vethB1]: 560954
+@out_headroom_at_ip[vethB1, 196]: 2
+@out_headroom_at_ip[vethB1, 176]: 19
+@out_headroom_at_ip[vethB1, 184]: 36
+@out_headroom_at_ip[vethB1, 192]: 427
+@out_headroom_at_ip[vethB1, 16]: 1036
+@out_headroom_at_ip[vethB0, 270]: 90895
+@out_headroom_at_ip[vethB1, 204]: 559434
+@vethB1_copy: 3905631
+@vethB1_xdp_rcv: 3905874

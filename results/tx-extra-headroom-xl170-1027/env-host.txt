@@ -1,0 +1,159 @@
+== node0 2026-10-27T13:57:34-06:00
+7.3.0-txhr+
+BOOT_IMAGE=/boot/vmlinuz-7.3.0-txhr+ root=UUID=ccb0832d-c80e-430f-b248-d117889f1992 ro console=ttyS1,115200 emulabcnet=98:f2:b3:c8:b9:64 mitigations=off
+CPU(s):                                  20
+Model name:                              Intel(R) Xeon(R) CPU E5-2640 v4 @ 2.40GHz
+Thread(s) per core:                      2
+Socket(s):                               1
+CPU(s) scaling MHz:                      64%
+NUMA node(s):                            1
+NUMA node0 CPU(s):                       0-19
+governor: schedutil driver: intel_cpufreq no_turbo: 0
+smt: 1 irqbalance: inactive nic numa: 0
+driver: mlx5_core
+version: 7.3.0-txhr+
+firmware-version: 14.32.1904 (HP_2420110034)
+expansion-rom-version: 
+bus-info: 0000:03:00.1
+supports-statistics: yes
+supports-test: yes
+supports-eeprom-access: no
+supports-register-dump: no
+supports-priv-flags: yes
+	Speed: 25000Mb/s
+	Link detected: yes
+5: ens1f1np1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc mq state UP mode DEFAULT group default qlen 1000
+    link/ether 9c:dc:71:5d:51:71 brd ff:ff:ff:ff:ff:ff promiscuity 0  allmulti 0 minmtu 68 maxmtu 9978 addrgenmode eui64 numtxqueues 160 numrxqueues 20 gso_max_size 65536 gso_max_segs 65535 tso_max_size 524280 tso_max_segs 65535 gro_max_size 65536 portname p1 switchid 70515dffff71dc9c parentbus pci parentdev 0000:03:00.1 
+    altname enp3s0f1np1
+Channel parameters for ens1f1np1:
+Pre-set maximums:
+RX:		n/a
+TX:		n/a
+Other:		n/a
+Combined:	20
+Current hardware settings:
+RX:		n/a
+TX:		n/a
+Other:		n/a
+Combined:	20
+Ring parameters for ens1f1np1:
+Pre-set maximums:
+RX:			8192
+RX Mini:		n/a
+RX Jumbo:		n/a
+TX:			8192
+TX push buff len:	n/a
+Current hardware settings:
+RX:			1024
+RX Mini:		n/a
+RX Jumbo:		n/a
+TX:			1024
+RX Buf Len:		n/a
+CQE Size:		n/a
+TX Push:		off
+RX Push:		off
+TX push buff len:	n/a
+TCP data split:		n/a
+Coalesce parameters for ens1f1np1:
+Adaptive RX: on  TX: on
+stats-block-usecs:	n/a
+sample-interval:	n/a
+pkt-rate-low:		n/a
+pkt-rate-high:		n/a
+
+rx-usecs:	8
+rx-frames:	128
+rx-usecs-irq:	n/a
+rx-frames-irq:	n/a
+
+tx-usecs:	8
+tx-frames:	128
+tx-usecs-irq:	n/a
+tx-frames-irq:	n/a
+
+rx-usecs-low:	n/a
+rx-frame-low:	n/a
+tx-usecs-low:	n/a
+tx-frame-low:	n/a
+
+rx-usecs-high:	n/a
+rx-frame-high:	n/a
+tx-usecs-high:	n/a
+tx-frame-high:	n/a
+
+CQE mode RX: on  TX: off
+
+tx-aggr-max-bytes:	n/a
+tx-aggr-max-frames:	n/a
+tx-aggr-time-usecs	n/a
+
+Pause parameters for ens1f1np1:
+Autonegotiate:	off
+RX:		on
+TX:		on
+
+rx-checksumming: on
+tx-checksumming: on
+tcp-segmentation-offload: on
+generic-segmentation-offload: on
+generic-receive-offload: on
+large-receive-offload: off
+ntuple-filters: off
+rx-gro-hw: off [fixed]
+rx-gro-list: off
+rx-udp-gro-forwarding: off
+Private flags for ens1f1np1:
+rx_cqe_moder       : off
+tx_cqe_moder       : off
+rx_cqe_compress    : off
+rx_striding_rq     : off
+rx_no_csum_complete: off
+xdp_tx_mpwqe       : off
+skb_tx_mpwqe       : off
+tx_port_ts         : off
+20 RX rings available
+Total 0 rules
+
+rps_cpus rx-0: 00000
+irq 57 mlx5_comp0@pci:0000:03:00.1 -> cpu 0
+irq 87 mlx5_comp1@pci:0000:03:00.1 -> cpu 1
+irq 88 mlx5_comp2@pci:0000:03:00.1 -> cpu 2
+irq 89 mlx5_comp3@pci:0000:03:00.1 -> cpu 3
+irq 90 mlx5_comp4@pci:0000:03:00.1 -> cpu 4
+irq 91 mlx5_comp5@pci:0000:03:00.1 -> cpu 5
+irq 92 mlx5_comp6@pci:0000:03:00.1 -> cpu 6
+irq 93 mlx5_comp7@pci:0000:03:00.1 -> cpu 7
+irq 94 mlx5_comp8@pci:0000:03:00.1 -> cpu 8
+irq 95 mlx5_comp9@pci:0000:03:00.1 -> cpu 9
+irq 96 mlx5_comp10@pci:0000:03:00.1 -> cpu 10
+irq 97 mlx5_comp11@pci:0000:03:00.1 -> cpu 11
+irq 98 mlx5_comp12@pci:0000:03:00.1 -> cpu 12
+irq 99 mlx5_comp13@pci:0000:03:00.1 -> cpu 13
+irq 100 mlx5_comp14@pci:0000:03:00.1 -> cpu 14
+irq 101 mlx5_comp15@pci:0000:03:00.1 -> cpu 15
+irq 102 mlx5_comp16@pci:0000:03:00.1 -> cpu 16
+irq 103 mlx5_comp17@pci:0000:03:00.1 -> cpu 17
+irq 104 mlx5_comp18@pci:0000:03:00.1 -> cpu 18
+irq 105 mlx5_comp19@pci:0000:03:00.1 -> cpu 19
+net.core.default_qdisc = fq_codel
+net.core.netdev_budget = 300
+net.core.netdev_max_backlog = 1000
+net.core.rmem_max = 4194304
+net.core.wmem_max = 4194304
+net.ipv4.tcp_rmem = 4096	131072	33554432
+net.ipv4.tcp_wmem = 4096	16384	4194304
+net.ipv4.tcp_congestion_control = cubic
+net.ipv4.ip_forward = 1
+net.core.bpf_jit_enable = 1
+net.core.busy_poll = 0
+net.core.rps_sock_flow_entries = 0
+lo               UNKNOWN        127.0.0.1/8 ::1/128 
+eno49np0         UP             <public-ip>/21 metric 1024 fe80::9af2:b3ff:fec8:b964/64 
+eno50np1         DOWN           
+ens1f0np0        DOWN           
+ens1f1np1        UP             10.0.1.1/24 fe80::9edc:71ff:fe5d:5171/64 
+default via <public-ip> dev eno49np0 proto dhcp src <public-ip> metric 1024 
+10.0.1.0/24 dev ens1f1np1 proto kernel scope link src 10.0.1.1 
+<public-ip> via <public-ip> dev eno49np0 proto dhcp src <public-ip> metric 1024 
+<public-ip>/21 dev eno49np0 proto kernel scope link src <public-ip> metric 1024 
+<public-ip> dev eno49np0 proto dhcp scope link src <public-ip> metric 1024 

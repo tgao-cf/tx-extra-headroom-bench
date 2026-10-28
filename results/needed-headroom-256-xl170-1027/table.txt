@@ -1,0 +1,15 @@
+median of 9 rounds; range in brackets
+
+traffic                    head expanded    vethB1 copied    stock                        256
+forwarded TCP              0% -> 100%       100% -> 100%      7.04 Gbit/s (6.79-7.13)  6.76 (-4.0%) (6.65-6.82)
+forwarded 64B UDP          0% -> 100%       0% -> 100%         873822 pps (870247-875886)  692155 (-20.8%) (689793-693811)
+local TCP, host to netns   0% -> 100%       100% -> 100%      5.75 Gbit/s (5.71-5.78)  5.59 (-2.8%) (5.32-5.67)
+local TCP, netns to host   0% -> 100%       100% -> 100%     39.14 Gbit/s (37.78-39.48)  37.70 (-3.7%) (36.33-38.28)
+TCP_RR, 1 byte             0% -> 100%       100% -> 100%         91582 /s (89620-93620)  86296 (-5.8%) (84228-87327)
+
+head expansions by device and caller, stock / headroom256:
+  forwarded TCP: expand/ens1f1np1/___pskb_trim 171854/163362; expand/ens1f1np1/ip_forward 0/83344; expand/ens1f1np1/skb_segment 0/163453; expand/vethB0/ip_forward 9/0; expand/vethB1/skb_expand_head 0/629630; fwd/ens1f1np1 90895/83344; fwd/vethB0 560954/630544; out/vethB0 90895/83344; out/vethB1 560954/630544; vethB1_copy/ 3905631/3688833; vethB1_xdp_rcv/ 3905874/3688833
+  forwarded 64B UDP: expand/ens1f1np1/ip_forward 0/71424; fwd/ens1f1np1 97824/71424; fwd/vethB0 6/6; out/vethB0 97824/71424; out/vethB1 6/6; vethB1_copy/ 1/71425; vethB1_xdp_rcv/ 97825/71425
+  local TCP, host to netns: expand/vethB0/skb_expand_head 0/115946; expand/vethB1/skb_expand_head 0/502371; out/vethB0 118136/115946; out/vethB1 511863/502371; vethB1_copy/ 3582692/3516262; vethB1_xdp_rcv/ 3582692/3516262
+  local TCP, netns to host: expand/vethB0/skb_expand_head 0/555570; expand/vethB1/skb_expand_head 0/833548; out/vethB0 587042/555570; out/vethB1 880640/833549; vethB1_copy/ 587043/555571; vethB1_xdp_rcv/ 587043/555571
+  TCP_RR, 1 byte: expand/vethB0/skb_expand_head 0/399439; expand/vethB1/skb_expand_head 0/399435; out/vethB0 418220/399439; out/vethB1 418216/399435; vethB1_copy/ 418221/399440; vethB1_xdp_rcv/ 418221/399440

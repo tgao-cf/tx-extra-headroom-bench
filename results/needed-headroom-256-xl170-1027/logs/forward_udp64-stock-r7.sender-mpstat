@@ -1,0 +1,7 @@
+Linux 6.18.55-061855-generic (node1) 	10/27/26 	_x86_64_	(20 CPU)
+
+12:30:58     CPU    %usr   %nice    %sys %iowait    %irq   %soft  %steal  %guest  %gnice   %idle
+12:31:13       2    0.00    0.00   53.16    0.00    0.00   46.84    0.00    0.00    0.00    0.00
+
+Average:     CPU    %usr   %nice    %sys %iowait    %irq   %soft  %steal  %guest  %gnice   %idle
+Average:       2    0.00    0.00   53.16    0.00    0.00   46.84    0.00    0.00    0.00    0.00

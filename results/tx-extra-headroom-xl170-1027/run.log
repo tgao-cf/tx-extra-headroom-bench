@@ -1,0 +1,28 @@
+13:57:34 start: 7.3.0-txhr+, 500000 datagrams of 64 bytes per row, results /users/user/txhr/results/node0-1027-tx-extra-headroom/results.tsv
+13:58:05 round 1 knob 0 tc: out_vethB0=500008 expand_vethB0=500003 rec={"push":20,"count":500003,"headroom":2,"err":0,"realloc":1}
+13:58:35 round 1 knob 64 tc: out_vethB0=500008 expand_vethB0=0 rec={"push":20,"count":500003,"headroom":66,"err":0,"realloc":0}
+13:59:06 round 1 knob 128 tc: out_vethB0=500008 expand_vethB0=0 rec={"push":20,"count":500003,"headroom":130,"err":0,"realloc":0}
+13:59:36 round 1 knob 256 tc: out_vethB0=500008 expand_vethB0=0 rec={"push":20,"count":500003,"headroom":258,"err":0,"realloc":0}
+13:59:47 round 1 knob 256 idle: out_vethB0=500009 expand_vethB0=0 rec={}
+14:00:18 round 2 knob 64 tc: out_vethB0=500008 expand_vethB0=0 rec={"push":20,"count":500003,"headroom":66,"err":0,"realloc":0}
+14:00:49 round 2 knob 128 tc: out_vethB0=500008 expand_vethB0=0 rec={"push":20,"count":500003,"headroom":130,"err":0,"realloc":0}
+14:01:19 round 2 knob 256 tc: out_vethB0=500008 expand_vethB0=0 rec={"push":20,"count":500003,"headroom":258,"err":0,"realloc":0}
+14:01:30 round 2 knob 256 idle: out_vethB0=500010 expand_vethB0=0 rec={}
+14:02:01 round 2 knob 0 tc: out_vethB0=500008 expand_vethB0=500003 rec={"push":20,"count":500003,"headroom":2,"err":0,"realloc":1}
+14:02:32 round 3 knob 128 tc: out_vethB0=500008 expand_vethB0=0 rec={"push":20,"count":500003,"headroom":130,"err":0,"realloc":0}
+14:03:02 round 3 knob 256 tc: out_vethB0=500008 expand_vethB0=0 rec={"push":20,"count":500003,"headroom":258,"err":0,"realloc":0}
+14:03:13 round 3 knob 256 idle: out_vethB0=500010 expand_vethB0=0 rec={}
+14:03:44 round 3 knob 0 tc: out_vethB0=500008 expand_vethB0=500003 rec={"push":20,"count":500003,"headroom":2,"err":0,"realloc":1}
+14:04:15 round 3 knob 64 tc: out_vethB0=500008 expand_vethB0=0 rec={"push":20,"count":500003,"headroom":66,"err":0,"realloc":0}
+14:04:45 round 4 knob 256 tc: out_vethB0=500008 expand_vethB0=0 rec={"push":20,"count":500003,"headroom":258,"err":0,"realloc":0}
+14:04:56 round 4 knob 256 idle: out_vethB0=500010 expand_vethB0=0 rec={}
+14:05:27 round 4 knob 0 tc: out_vethB0=500008 expand_vethB0=500003 rec={"push":20,"count":500003,"headroom":2,"err":0,"realloc":1}
+14:05:58 round 4 knob 64 tc: out_vethB0=500008 expand_vethB0=0 rec={"push":20,"count":500003,"headroom":66,"err":0,"realloc":0}
+14:06:28 round 4 knob 128 tc: out_vethB0=500008 expand_vethB0=0 rec={"push":20,"count":500003,"headroom":130,"err":0,"realloc":0}
+14:06:39 round 5 knob 256 idle: out_vethB0=500009 expand_vethB0=0 rec={}
+14:07:10 round 5 knob 0 tc: out_vethB0=500008 expand_vethB0=500003 rec={"push":20,"count":500003,"headroom":2,"err":0,"realloc":1}
+14:07:41 round 5 knob 64 tc: out_vethB0=500008 expand_vethB0=0 rec={"push":20,"count":500003,"headroom":66,"err":0,"realloc":0}
+14:08:11 round 5 knob 128 tc: out_vethB0=500008 expand_vethB0=0 rec={"push":20,"count":500003,"headroom":130,"err":0,"realloc":0}
+14:08:42 round 5 knob 256 tc: out_vethB0=500008 expand_vethB0=0 rec={"push":20,"count":500003,"headroom":258,"err":0,"realloc":0}
+14:08:42 DONE
+14:08:42 EXIT
