@@ -1,0 +1,7 @@
+[  100.823165] veth: loading out-of-tree module taints kernel.
+[  101.911628] NOTICE: Automounting of tracing to debugfs is deprecated and will be removed in 2030
+[  316.060160] mlx5_core 0000:07:00.0: mlx5_fw_version_query:844:(pid 3822): fw query isn't supported by the FW
+[  316.065839] mlx5_core 0000:07:00.1: mlx5_fw_version_query:844:(pid 3822): fw query isn't supported by the FW
+[  316.070469] mlx5_core 0000:03:00.0: mlx5_fw_version_query:844:(pid 3822): fw query isn't supported by the FW
+[  316.075068] mlx5_core 0000:03:00.1: mlx5_fw_version_query:844:(pid 3822): fw query isn't supported by the FW
+[  316.386213] mlx5_core 0000:07:00.0: mlx5_fw_version_query:844:(pid 3822): fw query isn't supported by the FW

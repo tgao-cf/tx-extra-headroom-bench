@@ -1,0 +1,215 @@
+17:29:44 start: 7.4.0-rc2-txhr+, variants on off, NIC ens1f1np1 (irq 57 on cpu 2), sender 10.0.1.2 ens1f1np1, results /users/user/tx-extra-headroom-bench/results/2026-11-19-gain/bench-results.tsv
+17:29:44 veth = on, xdp_tx_extra_headroom Y
+17:29:44 count on plain_udp
+17:30:00 count on xdp_udp
+17:30:16 count on xdpdrop_udp
+17:30:36 count on push_udp
+17:30:56 count on uplink_udp
+17:31:16 veth = off, xdp_tx_extra_headroom N
+17:31:16 count off plain_udp
+17:31:32 count off xdp_udp
+17:31:48 count off xdpdrop_udp
+17:32:08 count off push_udp
+17:32:28 count off uplink_udp
+17:32:48 veth = on, xdp_tx_extra_headroom Y
+17:32:48 round 1 on plain_udp
+17:33:08 RESULT plain-udp on 1 pps 288862  cpu2_busy=100.0 cpu2_soft=44.7 cpu4_busy=44.2 cpu4_soft=0.0 dt=15.01 nic_rx=0 nic_rxdrop=0 nic_rxmissed=0 nic_tx=0 nic_txdrop=0 vethB0_rx=1 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=4337197 vethB0_txdrop=0 vethB1_rx=4337098 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=1 vethB1_txdrop=0
+17:33:08 round 1 on xdp_udp
+17:33:27 RESULT xdp-udp on 1 pps 283143  cpu2_busy=100.0 cpu2_soft=46.3 cpu4_busy=44.8 cpu4_soft=0.0 dt=15.01 nic_rx=23 nic_rxdrop=0 nic_rxmissed=0 nic_tx=21 nic_txdrop=0 vethB0_rx=1 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=4251197 vethB0_txdrop=0 vethB1_rx=4251213 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=1 vethB1_txdrop=0
+17:33:27 round 1 on xdpdrop_udp
+17:33:50 RESULT xdpdrop-udp on 1 pps 465059  cpu2_busy=100.0 cpu2_soft=17.9 cpu4_busy=0.1 cpu4_soft=0.0 dt=15.01 nic_rx=23 nic_rxdrop=0 nic_rxmissed=0 nic_tx=21 nic_txdrop=0 vethB0_rx=1 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=6982534 vethB0_txdrop=0 vethB1_rx=6982533 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=1 vethB1_txdrop=0
+17:33:50 round 1 on push_udp
+17:34:14 RESULT push-udp on 1 pps 468435  cpu2_busy=100.0 cpu2_soft=14.9 cpu4_busy=0.0 cpu4_soft=0.0 bpf={"value":{".bss":[{"pushes":8899235},{"reallocated":0}]}} dt=15.01 nic_rx=0 nic_rxdrop=0 nic_rxmissed=0 nic_tx=0 nic_txdrop=0 vethB0_rx=0 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=7033202 vethB0_txdrop=0 vethB1_rx=7033163 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=0 vethB1_txdrop=0
+17:34:14 round 1 on uplink_udp
+17:34:38 RESULT uplink-udp on 1 pps 219469  cpu2_busy=100.0 cpu2_soft=56.4 cpu4_busy=0.0 cpu4_soft=0.0 bpf={"value":{".bss":[{"pushes":4163982},{"reallocated":0}]}} dt=15.01 nic_rx=0 nic_rxdrop=0 nic_rxmissed=0 nic_tx=3295210 nic_txdrop=0 vethB0_rx=3295186 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=1 vethB0_txdrop=0 vethB1_rx=1 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=3295204 vethB1_txdrop=0
+17:34:38 veth = off, xdp_tx_extra_headroom N
+17:34:38 round 1 off plain_udp
+17:34:57 RESULT plain-udp off 1 pps 287582  cpu2_busy=100.0 cpu2_soft=45.0 cpu4_busy=45.6 cpu4_soft=0.0 dt=15.01 nic_rx=23 nic_rxdrop=0 nic_rxmissed=0 nic_tx=21 nic_txdrop=0 vethB0_rx=1 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=4317856 vethB0_txdrop=0 vethB1_rx=4317827 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=1 vethB1_txdrop=0
+17:34:57 round 1 off xdp_udp
+17:35:17 RESULT xdp-udp off 1 pps 237057  cpu2_busy=100.0 cpu2_soft=54.5 cpu4_busy=43.8 cpu4_soft=0.0 dt=15.01 nic_rx=23 nic_rxdrop=0 nic_rxmissed=0 nic_tx=21 nic_txdrop=0 vethB0_rx=1 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=3559263 vethB0_txdrop=0 vethB1_rx=3559222 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=1 vethB1_txdrop=0
+17:35:17 round 1 off xdpdrop_udp
+17:35:40 RESULT xdpdrop-udp off 1 pps 388012  cpu2_busy=100.0 cpu2_soft=32.3 cpu4_busy=0.0 cpu4_soft=0.0 dt=15.01 nic_rx=0 nic_rxdrop=0 nic_rxmissed=0 nic_tx=0 nic_txdrop=0 vethB0_rx=1 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=5825736 vethB0_txdrop=0 vethB1_rx=5825689 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=1 vethB1_txdrop=0
+17:35:40 round 1 off push_udp
+17:36:04 RESULT push-udp off 1 pps 384828  cpu2_busy=100.0 cpu2_soft=11.7 cpu4_busy=0.1 cpu4_soft=0.0 bpf= dt=15.01 nic_rx=23 nic_rxdrop=0 nic_rxmissed=0 nic_tx=21 nic_txdrop=0 vethB0_rx=1 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=5778056 vethB0_txdrop=0 vethB1_rx=5778053 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=1 vethB1_txdrop=0
+17:36:04 round 1 off uplink_udp
+17:36:27 RESULT uplink-udp off 1 pps 187812  cpu2_busy=100.0 cpu2_soft=60.6 cpu4_busy=0.0 cpu4_soft=0.0 bpf= dt=15.01 nic_rx=24 nic_rxdrop=0 nic_rxmissed=0 nic_tx=2819916 nic_txdrop=0 vethB0_rx=2819924 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=0 vethB0_txdrop=0 vethB1_rx=0 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=2819942 vethB1_txdrop=0
+17:36:27 veth = off, xdp_tx_extra_headroom N
+17:36:27 round 2 off plain_udp
+17:36:47 RESULT plain-udp off 2 pps 291247  cpu2_busy=100.0 cpu2_soft=44.0 cpu4_busy=44.1 cpu4_soft=0.0 dt=15.01 nic_rx=7 nic_rxdrop=0 nic_rxmissed=0 nic_tx=4 nic_txdrop=0 vethB0_rx=1 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=4372884 vethB0_txdrop=0 vethB1_rx=4372875 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=1 vethB1_txdrop=0
+17:36:47 round 2 off xdp_udp
+17:37:06 RESULT xdp-udp off 2 pps 237169  cpu2_busy=100.0 cpu2_soft=53.2 cpu4_busy=44.4 cpu4_soft=0.0 dt=15.01 nic_rx=0 nic_rxdrop=0 nic_rxmissed=0 nic_tx=0 nic_txdrop=0 vethB0_rx=1 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=3560904 vethB0_txdrop=0 vethB1_rx=3560916 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=1 vethB1_txdrop=0
+17:37:06 round 2 off xdpdrop_udp
+17:37:30 RESULT xdpdrop-udp off 2 pps 385248  cpu2_busy=100.0 cpu2_soft=31.6 cpu4_busy=0.1 cpu4_soft=0.0 dt=15.01 nic_rx=23 nic_rxdrop=0 nic_rxmissed=0 nic_tx=21 nic_txdrop=0 vethB0_rx=1 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=5784301 vethB0_txdrop=0 vethB1_rx=5784316 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=1 vethB1_txdrop=0
+17:37:30 round 2 off push_udp
+17:37:53 RESULT push-udp off 2 pps 387874  cpu2_busy=100.0 cpu2_soft=11.9 cpu4_busy=0.1 cpu4_soft=0.0 bpf= dt=15.01 nic_rx=23 nic_rxdrop=0 nic_rxmissed=0 nic_tx=21 nic_txdrop=0 vethB0_rx=0 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=5823763 vethB0_txdrop=0 vethB1_rx=5823760 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=0 vethB1_txdrop=0
+17:37:53 round 2 off uplink_udp
+17:38:16 RESULT uplink-udp off 2 pps 191855  cpu2_busy=100.0 cpu2_soft=60.2 cpu4_busy=0.0 cpu4_soft=0.0 bpf= dt=15.01 nic_rx=0 nic_rxdrop=0 nic_rxmissed=0 nic_tx=2880559 nic_txdrop=0 vethB0_rx=2880576 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=1 vethB0_txdrop=0 vethB1_rx=1 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=2880577 vethB1_txdrop=0
+17:38:17 veth = on, xdp_tx_extra_headroom Y
+17:38:17 round 2 on plain_udp
+17:38:36 RESULT plain-udp on 2 pps 291485  cpu2_busy=100.0 cpu2_soft=43.9 cpu4_busy=45.9 cpu4_soft=0.0 dt=15.01 nic_rx=0 nic_rxdrop=0 nic_rxmissed=0 nic_tx=0 nic_txdrop=0 vethB0_rx=1 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=4376397 vethB0_txdrop=0 vethB1_rx=4376411 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=1 vethB1_txdrop=0
+17:38:36 round 2 on xdp_udp
+17:38:55 RESULT xdp-udp on 2 pps 280106  cpu2_busy=100.0 cpu2_soft=46.4 cpu4_busy=45.0 cpu4_soft=0.0 dt=15.01 nic_rx=23 nic_rxdrop=0 nic_rxmissed=0 nic_tx=21 nic_txdrop=0 vethB0_rx=1 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=4205569 vethB0_txdrop=0 vethB1_rx=4205621 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=1 vethB1_txdrop=0
+17:38:55 round 2 on xdpdrop_udp
+17:39:19 RESULT xdpdrop-udp on 2 pps 465024  cpu2_busy=100.0 cpu2_soft=17.5 cpu4_busy=0.0 cpu4_soft=0.0 dt=15.01 nic_rx=0 nic_rxdrop=0 nic_rxmissed=0 nic_tx=0 nic_txdrop=0 vethB0_rx=0 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=6982041 vethB0_txdrop=0 vethB1_rx=6982052 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=0 vethB1_txdrop=0
+17:39:19 round 2 on push_udp
+17:39:42 RESULT push-udp on 2 pps 472032  cpu2_busy=100.0 cpu2_soft=14.8 cpu4_busy=0.0 cpu4_soft=0.0 bpf={"value":{".bss":[{"pushes":8966986},{"reallocated":0}]}} dt=15.01 nic_rx=0 nic_rxdrop=0 nic_rxmissed=0 nic_tx=1 nic_txdrop=0 vethB0_rx=1 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=7087287 vethB0_txdrop=0 vethB1_rx=7087276 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=1 vethB1_txdrop=0
+17:39:42 round 2 on uplink_udp
+17:40:06 RESULT uplink-udp on 2 pps 222980  cpu2_busy=100.0 cpu2_soft=56.6 cpu4_busy=2.3 cpu4_soft=0.0 bpf={"value":{".bss":[{"pushes":4228238},{"reallocated":0}]}} dt=15.01 nic_rx=23 nic_rxdrop=0 nic_rxmissed=0 nic_tx=3347954 nic_txdrop=0 vethB0_rx=3347936 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=1 vethB0_txdrop=0 vethB1_rx=1 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=3347958 vethB1_txdrop=0
+17:40:06 veth = on, xdp_tx_extra_headroom Y
+17:40:07 round 3 on plain_udp
+17:40:26 RESULT plain-udp on 3 pps 292086  cpu2_busy=100.0 cpu2_soft=44.1 cpu4_busy=44.9 cpu4_soft=0.0 dt=15.01 nic_rx=23 nic_rxdrop=0 nic_rxmissed=0 nic_tx=21 nic_txdrop=0 vethB0_rx=1 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=4385521 vethB0_txdrop=0 vethB1_rx=4385539 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=1 vethB1_txdrop=0
+17:40:26 round 3 on xdp_udp
+17:40:45 RESULT xdp-udp on 3 pps 284601  cpu2_busy=100.0 cpu2_soft=44.8 cpu4_busy=44.3 cpu4_soft=0.0 dt=15.01 nic_rx=0 nic_rxdrop=0 nic_rxmissed=0 nic_tx=0 nic_txdrop=0 vethB0_rx=1 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=4273180 vethB0_txdrop=0 vethB1_rx=4273109 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=1 vethB1_txdrop=0
+17:40:45 round 3 on xdpdrop_udp
+17:41:09 RESULT xdpdrop-udp on 3 pps 465150  cpu2_busy=100.0 cpu2_soft=18.0 cpu4_busy=2.3 cpu4_soft=0.0 dt=15.01 nic_rx=23 nic_rxdrop=0 nic_rxmissed=0 nic_tx=21 nic_txdrop=0 vethB0_rx=1 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=6983988 vethB0_txdrop=0 vethB1_rx=6984054 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=1 vethB1_txdrop=0
+17:41:09 round 3 on push_udp
+17:41:32 RESULT push-udp on 3 pps 465132  cpu2_busy=100.0 cpu2_soft=14.7 cpu4_busy=0.0 cpu4_soft=0.0 bpf={"value":{".bss":[{"pushes":8836884},{"reallocated":0}]}} dt=15.01 nic_rx=24 nic_rxdrop=0 nic_rxmissed=0 nic_tx=22 nic_txdrop=0 vethB0_rx=1 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=6983817 vethB0_txdrop=0 vethB1_rx=6983774 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=1 vethB1_txdrop=0
+17:41:32 round 3 on uplink_udp
+17:41:56 RESULT uplink-udp on 3 pps 219606  cpu2_busy=100.0 cpu2_soft=55.8 cpu4_busy=0.0 cpu4_soft=0.0 bpf={"value":{".bss":[{"pushes":4168232},{"reallocated":0}]}} dt=15.01 nic_rx=0 nic_rxdrop=0 nic_rxmissed=0 nic_tx=3297263 nic_txdrop=0 vethB0_rx=3297266 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=1 vethB0_txdrop=0 vethB1_rx=1 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=3297260 vethB1_txdrop=0
+17:41:56 veth = off, xdp_tx_extra_headroom N
+17:41:56 round 3 off plain_udp
+17:42:16 RESULT plain-udp off 3 pps 291483  cpu2_busy=100.0 cpu2_soft=43.9 cpu4_busy=45.2 cpu4_soft=0.0 dt=15.01 nic_rx=0 nic_rxdrop=0 nic_rxmissed=0 nic_tx=0 nic_txdrop=0 vethB0_rx=1 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=4376599 vethB0_txdrop=0 vethB1_rx=4376508 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=1 vethB1_txdrop=0
+17:42:16 round 3 off xdp_udp
+17:42:35 RESULT xdp-udp off 3 pps 238492  cpu2_busy=100.0 cpu2_soft=53.3 cpu4_busy=42.9 cpu4_soft=0.0 dt=15.01 nic_rx=23 nic_rxdrop=0 nic_rxmissed=0 nic_tx=21 nic_txdrop=0 vethB0_rx=1 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=3580831 vethB0_txdrop=0 vethB1_rx=3580822 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=1 vethB1_txdrop=0
+17:42:35 round 3 off xdpdrop_udp
+17:42:58 RESULT xdpdrop-udp off 3 pps 388254  cpu2_busy=100.0 cpu2_soft=32.2 cpu4_busy=0.2 cpu4_soft=0.0 dt=15.01 nic_rx=23 nic_rxdrop=0 nic_rxmissed=0 nic_tx=21 nic_txdrop=0 vethB0_rx=1 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=5829400 vethB0_txdrop=0 vethB1_rx=5829466 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=1 vethB1_txdrop=0
+17:42:58 round 3 off push_udp
+17:43:22 RESULT push-udp off 3 pps 384074  cpu2_busy=100.0 cpu2_soft=11.7 cpu4_busy=0.0 cpu4_soft=0.0 bpf= dt=15.01 nic_rx=0 nic_rxdrop=0 nic_rxmissed=0 nic_tx=0 nic_txdrop=0 vethB0_rx=1 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=5766614 vethB0_txdrop=0 vethB1_rx=5766670 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=1 vethB1_txdrop=0
+17:43:22 round 3 off uplink_udp
+17:43:45 RESULT uplink-udp off 3 pps 190264  cpu2_busy=100.0 cpu2_soft=61.6 cpu4_busy=0.0 cpu4_soft=0.0 bpf= dt=15.01 nic_rx=0 nic_rxdrop=0 nic_rxmissed=0 nic_tx=2856709 nic_txdrop=0 vethB0_rx=2856764 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=1 vethB0_txdrop=0 vethB1_rx=1 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=2856799 vethB1_txdrop=0
+17:43:46 veth = off, xdp_tx_extra_headroom N
+17:43:46 round 4 off plain_udp
+17:44:05 RESULT plain-udp off 4 pps 287772  cpu2_busy=100.0 cpu2_soft=44.8 cpu4_busy=45.6 cpu4_soft=0.0 dt=15.01 nic_rx=23 nic_rxdrop=0 nic_rxmissed=0 nic_tx=21 nic_txdrop=0 vethB0_rx=1 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=4320739 vethB0_txdrop=0 vethB1_rx=4320744 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=1 vethB1_txdrop=0
+17:44:05 round 4 off xdp_udp
+17:44:24 RESULT xdp-udp off 4 pps 233678  cpu2_busy=100.0 cpu2_soft=56.1 cpu4_busy=44.8 cpu4_soft=0.0 dt=15.01 nic_rx=0 nic_rxdrop=0 nic_rxmissed=0 nic_tx=0 nic_txdrop=0 vethB0_rx=1 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=3508518 vethB0_txdrop=0 vethB1_rx=3508521 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=1 vethB1_txdrop=0
+17:44:24 round 4 off xdpdrop_udp
+17:44:48 RESULT xdpdrop-udp off 4 pps 386948  cpu2_busy=100.0 cpu2_soft=32.1 cpu4_busy=0.0 cpu4_soft=0.0 dt=15.01 nic_rx=0 nic_rxdrop=0 nic_rxmissed=0 nic_tx=0 nic_txdrop=0 vethB0_rx=1 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=5809839 vethB0_txdrop=0 vethB1_rx=5809820 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=1 vethB1_txdrop=0
+17:44:48 round 4 off push_udp
+17:45:11 RESULT push-udp off 4 pps 383552  cpu2_busy=100.0 cpu2_soft=11.9 cpu4_busy=0.2 cpu4_soft=0.0 bpf= dt=15.01 nic_rx=23 nic_rxdrop=0 nic_rxmissed=0 nic_tx=21 nic_txdrop=0 vethB0_rx=1 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=5758957 vethB0_txdrop=0 vethB1_rx=5758889 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=1 vethB1_txdrop=0
+17:45:11 round 4 off uplink_udp
+17:45:35 RESULT uplink-udp off 4 pps 186441  cpu2_busy=100.0 cpu2_soft=59.8 cpu4_busy=0.0 cpu4_soft=0.0 bpf= dt=15.01 nic_rx=23 nic_rxdrop=0 nic_rxmissed=0 nic_tx=2799296 nic_txdrop=0 vethB0_rx=2799254 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=1 vethB0_txdrop=0 vethB1_rx=1 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=2799250 vethB1_txdrop=0
+17:45:35 veth = on, xdp_tx_extra_headroom Y
+17:45:35 round 4 on plain_udp
+17:45:54 RESULT plain-udp on 4 pps 286448  cpu2_busy=100.0 cpu2_soft=45.1 cpu4_busy=45.4 cpu4_soft=0.0 dt=15.01 nic_rx=0 nic_rxdrop=0 nic_rxmissed=0 nic_tx=0 nic_txdrop=0 vethB0_rx=1 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=4300857 vethB0_txdrop=0 vethB1_rx=4300828 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=1 vethB1_txdrop=0
+17:45:54 round 4 on xdp_udp
+17:46:14 RESULT xdp-udp on 4 pps 278784  cpu2_busy=100.0 cpu2_soft=47.7 cpu4_busy=43.2 cpu4_soft=0.0 dt=15.01 nic_rx=0 nic_rxdrop=0 nic_rxmissed=0 nic_tx=0 nic_txdrop=0 vethB0_rx=1 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=4185806 vethB0_txdrop=0 vethB1_rx=4185760 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=1 vethB1_txdrop=0
+17:46:14 round 4 on xdpdrop_udp
+17:46:37 RESULT xdpdrop-udp on 4 pps 465384  cpu2_busy=100.0 cpu2_soft=17.7 cpu4_busy=0.0 cpu4_soft=0.0 dt=15.01 nic_rx=23 nic_rxdrop=0 nic_rxmissed=0 nic_tx=21 nic_txdrop=0 vethB0_rx=0 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=6987562 vethB0_txdrop=0 vethB1_rx=6987515 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=0 vethB1_txdrop=0
+17:46:37 round 4 on push_udp
+17:47:01 RESULT push-udp on 4 pps 471622  cpu2_busy=100.0 cpu2_soft=14.7 cpu4_busy=0.0 cpu4_soft=0.0 bpf={"value":{".bss":[{"pushes":8964301},{"reallocated":0}]}} dt=15.01 nic_rx=0 nic_rxdrop=0 nic_rxmissed=0 nic_tx=0 nic_txdrop=0 vethB0_rx=1 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=7081372 vethB0_txdrop=0 vethB1_rx=7081337 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=1 vethB1_txdrop=0
+17:47:01 round 4 on uplink_udp
+17:47:24 RESULT uplink-udp on 4 pps 214179  cpu2_busy=100.0 cpu2_soft=55.6 cpu4_busy=0.0 cpu4_soft=0.0 bpf={"value":{".bss":[{"pushes":4062264},{"reallocated":0}]}} dt=15.01 nic_rx=0 nic_rxdrop=0 nic_rxmissed=0 nic_tx=3215778 nic_txdrop=0 vethB0_rx=3215743 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=1 vethB0_txdrop=0 vethB1_rx=1 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=3215721 vethB1_txdrop=0
+17:47:25 veth = on, xdp_tx_extra_headroom Y
+17:47:25 round 5 on plain_udp
+17:47:44 RESULT plain-udp on 5 pps 289721  cpu2_busy=100.0 cpu2_soft=45.0 cpu4_busy=46.4 cpu4_soft=0.0 dt=15.01 nic_rx=0 nic_rxdrop=0 nic_rxmissed=0 nic_tx=0 nic_txdrop=0 vethB0_rx=1 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=4350022 vethB0_txdrop=0 vethB1_rx=4350051 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=1 vethB1_txdrop=0
+17:47:44 round 5 on xdp_udp
+17:48:04 RESULT xdp-udp on 5 pps 284028  cpu2_busy=100.0 cpu2_soft=45.7 cpu4_busy=44.2 cpu4_soft=0.0 dt=15.01 nic_rx=23 nic_rxdrop=0 nic_rxmissed=0 nic_tx=21 nic_txdrop=0 vethB0_rx=1 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=4264578 vethB0_txdrop=0 vethB1_rx=4264622 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=1 vethB1_txdrop=0
+17:48:04 round 5 on xdpdrop_udp
+17:48:27 RESULT xdpdrop-udp on 5 pps 469180  cpu2_busy=100.0 cpu2_soft=17.7 cpu4_busy=0.0 cpu4_soft=0.0 dt=15.01 nic_rx=0 nic_rxdrop=0 nic_rxmissed=0 nic_tx=0 nic_txdrop=0 vethB0_rx=1 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=7044620 vethB0_txdrop=0 vethB1_rx=7044605 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=1 vethB1_txdrop=0
+17:48:27 round 5 on push_udp
+17:48:50 RESULT push-udp on 5 pps 468713  cpu2_busy=100.0 cpu2_soft=15.1 cpu4_busy=0.0 cpu4_soft=0.0 bpf={"value":{".bss":[{"pushes":8904800},{"reallocated":0}]}} dt=15.01 nic_rx=0 nic_rxdrop=0 nic_rxmissed=0 nic_tx=0 nic_txdrop=0 vethB0_rx=1 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=7037604 vethB0_txdrop=0 vethB1_rx=7037613 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=1 vethB1_txdrop=0
+17:48:50 round 5 on uplink_udp
+17:49:14 RESULT uplink-udp on 5 pps 214706  cpu2_busy=100.0 cpu2_soft=54.6 cpu4_busy=0.0 cpu4_soft=0.0 bpf={"value":{".bss":[{"pushes":4070423},{"reallocated":0}]}} dt=15.01 nic_rx=23 nic_rxdrop=0 nic_rxmissed=0 nic_tx=3223767 nic_txdrop=0 vethB0_rx=3223761 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=1 vethB0_txdrop=0 vethB1_rx=1 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=3223754 vethB1_txdrop=0
+17:49:14 veth = off, xdp_tx_extra_headroom N
+17:49:15 round 5 off plain_udp
+17:49:34 RESULT plain-udp off 5 pps 287940  cpu2_busy=100.0 cpu2_soft=44.7 cpu4_busy=45.8 cpu4_soft=0.0 dt=15.01 nic_rx=23 nic_rxdrop=0 nic_rxmissed=0 nic_tx=21 nic_txdrop=0 vethB0_rx=1 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=4323272 vethB0_txdrop=0 vethB1_rx=4323243 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=1 vethB1_txdrop=0
+17:49:34 round 5 off xdp_udp
+17:49:53 RESULT xdp-udp off 5 pps 236651  cpu2_busy=100.0 cpu2_soft=53.8 cpu4_busy=43.5 cpu4_soft=0.0 dt=15.01 nic_rx=0 nic_rxdrop=0 nic_rxmissed=0 nic_tx=0 nic_txdrop=0 vethB0_rx=1 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=3553247 vethB0_txdrop=0 vethB1_rx=3553236 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=1 vethB1_txdrop=0
+17:49:53 round 5 off xdpdrop_udp
+17:50:17 RESULT xdpdrop-udp off 5 pps 384044  cpu2_busy=100.0 cpu2_soft=31.5 cpu4_busy=0.0 cpu4_soft=0.0 dt=15.01 nic_rx=23 nic_rxdrop=0 nic_rxmissed=0 nic_tx=21 nic_txdrop=0 vethB0_rx=1 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=5766308 vethB0_txdrop=0 vethB1_rx=5766266 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=1 vethB1_txdrop=0
+17:50:17 round 5 off push_udp
+17:50:40 RESULT push-udp off 5 pps 385080  cpu2_busy=100.0 cpu2_soft=11.8 cpu4_busy=0.2 cpu4_soft=0.0 bpf= dt=15.01 nic_rx=23 nic_rxdrop=0 nic_rxmissed=0 nic_tx=21 nic_txdrop=0 vethB0_rx=1 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=5781788 vethB0_txdrop=0 vethB1_rx=5781773 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=1 vethB1_txdrop=0
+17:50:40 round 5 off uplink_udp
+17:51:04 RESULT uplink-udp off 5 pps 189924  cpu2_busy=100.0 cpu2_soft=60.7 cpu4_busy=0.0 cpu4_soft=0.0 bpf= dt=15.01 nic_rx=0 nic_rxdrop=0 nic_rxmissed=0 nic_tx=2851601 nic_txdrop=0 vethB0_rx=2851625 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=1 vethB0_txdrop=0 vethB1_rx=1 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=2851659 vethB1_txdrop=0
+17:51:04 veth = off, xdp_tx_extra_headroom N
+17:51:04 round 6 off plain_udp
+17:51:23 RESULT plain-udp off 6 pps 286879  cpu2_busy=100.0 cpu2_soft=45.6 cpu4_busy=47.8 cpu4_soft=0.0 dt=15.01 nic_rx=0 nic_rxdrop=0 nic_rxmissed=0 nic_tx=0 nic_txdrop=0 vethB0_rx=1 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=4307318 vethB0_txdrop=0 vethB1_rx=4307275 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=1 vethB1_txdrop=0
+17:51:23 round 6 off xdp_udp
+17:51:43 RESULT xdp-udp off 6 pps 237586  cpu2_busy=100.0 cpu2_soft=53.4 cpu4_busy=44.1 cpu4_soft=0.0 dt=15.01 nic_rx=24 nic_rxdrop=0 nic_rxmissed=0 nic_tx=22 nic_txdrop=0 vethB0_rx=1 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=3567234 vethB0_txdrop=0 vethB1_rx=3567240 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=1 vethB1_txdrop=0
+17:51:43 round 6 off xdpdrop_udp
+17:52:06 RESULT xdpdrop-udp off 6 pps 382428  cpu2_busy=100.0 cpu2_soft=30.9 cpu4_busy=0.1 cpu4_soft=0.0 dt=15.01 nic_rx=6 nic_rxdrop=0 nic_rxmissed=0 nic_tx=4 nic_txdrop=0 vethB0_rx=1 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=5741976 vethB0_txdrop=0 vethB1_rx=5741989 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=1 vethB1_txdrop=0
+17:52:06 round 6 off push_udp
+17:52:30 RESULT push-udp off 6 pps 385834  cpu2_busy=100.0 cpu2_soft=11.6 cpu4_busy=0.0 cpu4_soft=0.0 bpf= dt=15.01 nic_rx=0 nic_rxdrop=0 nic_rxmissed=0 nic_tx=0 nic_txdrop=0 vethB0_rx=0 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=5793092 vethB0_txdrop=0 vethB1_rx=5793069 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=0 vethB1_txdrop=0
+17:52:30 round 6 off uplink_udp
+17:52:53 RESULT uplink-udp off 6 pps 185825  cpu2_busy=100.0 cpu2_soft=60.1 cpu4_busy=0.0 cpu4_soft=0.0 bpf= dt=15.01 nic_rx=0 nic_rxdrop=0 nic_rxmissed=0 nic_tx=2790028 nic_txdrop=0 vethB0_rx=2790051 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=1 vethB0_txdrop=0 vethB1_rx=1 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=2790074 vethB1_txdrop=0
+17:52:53 veth = on, xdp_tx_extra_headroom Y
+17:52:53 round 6 on plain_udp
+17:53:13 RESULT plain-udp on 6 pps 283443  cpu2_busy=100.0 cpu2_soft=45.7 cpu4_busy=45.1 cpu4_soft=0.0 dt=15.01 nic_rx=23 nic_rxdrop=0 nic_rxmissed=0 nic_tx=21 nic_txdrop=0 vethB0_rx=1 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=4255794 vethB0_txdrop=0 vethB1_rx=4255780 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=1 vethB1_txdrop=0
+17:53:13 round 6 on xdp_udp
+17:53:32 RESULT xdp-udp on 6 pps 286514  cpu2_busy=100.0 cpu2_soft=45.8 cpu4_busy=43.7 cpu4_soft=0.0 dt=15.01 nic_rx=0 nic_rxdrop=0 nic_rxmissed=0 nic_tx=0 nic_txdrop=0 vethB0_rx=1 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=4301979 vethB0_txdrop=0 vethB1_rx=4301981 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=1 vethB1_txdrop=0
+17:53:32 round 6 on xdpdrop_udp
+17:53:55 RESULT xdpdrop-udp on 6 pps 469636  cpu2_busy=100.0 cpu2_soft=17.9 cpu4_busy=0.0 cpu4_soft=0.0 dt=15.01 nic_rx=0 nic_rxdrop=0 nic_rxmissed=0 nic_tx=0 nic_txdrop=0 vethB0_rx=0 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=7051363 vethB0_txdrop=0 vethB1_rx=7051303 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=0 vethB1_txdrop=0
+17:53:55 round 6 on push_udp
+17:54:19 RESULT push-udp on 6 pps 465134  cpu2_busy=100.0 cpu2_soft=14.3 cpu4_busy=0.0 cpu4_soft=0.0 bpf={"value":{".bss":[{"pushes":8836433},{"reallocated":0}]}} dt=15.01 nic_rx=23 nic_rxdrop=0 nic_rxmissed=0 nic_tx=21 nic_txdrop=0 vethB0_rx=1 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=6983729 vethB0_txdrop=0 vethB1_rx=6983731 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=1 vethB1_txdrop=0
+17:54:19 round 6 on uplink_udp
+17:54:43 RESULT uplink-udp on 6 pps 218755  cpu2_busy=100.0 cpu2_soft=55.9 cpu4_busy=0.1 cpu4_soft=0.0 bpf={"value":{".bss":[{"pushes":4148053},{"reallocated":0}]}} dt=15.01 nic_rx=24 nic_rxdrop=0 nic_rxmissed=0 nic_tx=3284482 nic_txdrop=0 vethB0_rx=3284491 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=1 vethB0_txdrop=0 vethB1_rx=1 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=3284515 vethB1_txdrop=0
+17:54:43 veth = on, xdp_tx_extra_headroom Y
+17:54:43 round 7 on plain_udp
+17:55:02 RESULT plain-udp on 7 pps 285123  cpu2_busy=100.0 cpu2_soft=45.2 cpu4_busy=45.4 cpu4_soft=0.0 dt=15.01 nic_rx=0 nic_rxdrop=0 nic_rxmissed=0 nic_tx=0 nic_txdrop=0 vethB0_rx=1 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=4281143 vethB0_txdrop=0 vethB1_rx=4281006 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=1 vethB1_txdrop=0
+17:55:02 round 7 on xdp_udp
+17:55:22 RESULT xdp-udp on 7 pps 283528  cpu2_busy=100.0 cpu2_soft=45.5 cpu4_busy=43.8 cpu4_soft=0.0 dt=15.01 nic_rx=0 nic_rxdrop=0 nic_rxmissed=0 nic_tx=0 nic_txdrop=0 vethB0_rx=1 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=4257168 vethB0_txdrop=0 vethB1_rx=4257106 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=1 vethB1_txdrop=0
+17:55:22 round 7 on xdpdrop_udp
+17:55:45 RESULT xdpdrop-udp on 7 pps 470723  cpu2_busy=100.0 cpu2_soft=17.4 cpu4_busy=0.1 cpu4_soft=0.0 dt=15.01 nic_rx=23 nic_rxdrop=0 nic_rxmissed=0 nic_tx=21 nic_txdrop=0 vethB0_rx=1 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=7067719 vethB0_txdrop=0 vethB1_rx=7067753 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=1 vethB1_txdrop=0
+17:55:45 round 7 on push_udp
+17:56:09 RESULT push-udp on 7 pps 441863  cpu2_busy=100.0 cpu2_soft=15.2 cpu4_busy=0.0 cpu4_soft=0.0 bpf={"value":{".bss":[{"pushes":8395158},{"reallocated":0}]}} dt=15.01 nic_rx=25 nic_rxdrop=0 nic_rxmissed=0 nic_tx=23 nic_txdrop=0 vethB0_rx=1 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=6634294 vethB0_txdrop=0 vethB1_rx=6634330 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=1 vethB1_txdrop=0
+17:56:09 round 7 on uplink_udp
+17:56:32 RESULT uplink-udp on 7 pps 217875  cpu2_busy=100.0 cpu2_soft=55.4 cpu4_busy=0.0 cpu4_soft=0.0 bpf={"value":{".bss":[{"pushes":4124729},{"reallocated":0}]}} dt=15.01 nic_rx=0 nic_rxdrop=0 nic_rxmissed=0 nic_tx=3271293 nic_txdrop=0 vethB0_rx=3271267 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=1 vethB0_txdrop=0 vethB1_rx=1 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=3271228 vethB1_txdrop=0
+17:56:33 veth = off, xdp_tx_extra_headroom N
+17:56:33 round 7 off plain_udp
+17:56:52 RESULT plain-udp off 7 pps 288084  cpu2_busy=100.0 cpu2_soft=44.3 cpu4_busy=45.1 cpu4_soft=0.0 dt=15.01 nic_rx=8 nic_rxdrop=0 nic_rxmissed=0 nic_tx=9 nic_txdrop=0 vethB0_rx=1 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=4325357 vethB0_txdrop=0 vethB1_rx=4325429 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=1 vethB1_txdrop=0
+17:56:52 round 7 off xdp_udp
+17:57:11 RESULT xdp-udp off 7 pps 238981  cpu2_busy=100.0 cpu2_soft=53.1 cpu4_busy=43.2 cpu4_soft=0.0 dt=15.01 nic_rx=23 nic_rxdrop=0 nic_rxmissed=0 nic_tx=21 nic_txdrop=0 vethB0_rx=1 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=3588246 vethB0_txdrop=0 vethB1_rx=3588247 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=1 vethB1_txdrop=0
+17:57:11 round 7 off xdpdrop_udp
+17:57:35 RESULT xdpdrop-udp off 7 pps 387045  cpu2_busy=100.0 cpu2_soft=31.7 cpu4_busy=0.0 cpu4_soft=0.0 dt=15.01 nic_rx=0 nic_rxdrop=0 nic_rxmissed=0 nic_tx=0 nic_txdrop=0 vethB0_rx=1 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=5811415 vethB0_txdrop=0 vethB1_rx=5811338 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=1 vethB1_txdrop=0
+17:57:35 round 7 off push_udp
+17:57:58 RESULT push-udp off 7 pps 383595  cpu2_busy=100.0 cpu2_soft=11.5 cpu4_busy=0.0 cpu4_soft=0.0 bpf= dt=15.01 nic_rx=0 nic_rxdrop=0 nic_rxmissed=0 nic_tx=0 nic_txdrop=0 vethB0_rx=1 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=5759373 vethB0_txdrop=0 vethB1_rx=5759407 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=1 vethB1_txdrop=0
+17:57:58 round 7 off uplink_udp
+17:58:22 RESULT uplink-udp off 7 pps 192928  cpu2_busy=100.0 cpu2_soft=60.5 cpu4_busy=0.1 cpu4_soft=0.0 bpf= dt=15.01 nic_rx=23 nic_rxdrop=0 nic_rxmissed=0 nic_tx=2896754 nic_txdrop=0 vethB0_rx=2896735 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=1 vethB0_txdrop=0 vethB1_rx=1 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=2896758 vethB1_txdrop=0
+17:58:22 veth = off, xdp_tx_extra_headroom N
+17:58:22 round 8 off plain_udp
+17:58:42 RESULT plain-udp off 8 pps 286066  cpu2_busy=100.0 cpu2_soft=45.1 cpu4_busy=44.8 cpu4_soft=0.0 dt=15.01 nic_rx=23 nic_rxdrop=0 nic_rxmissed=0 nic_tx=21 nic_txdrop=0 vethB0_rx=1 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=4295188 vethB0_txdrop=0 vethB1_rx=4295188 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=1 vethB1_txdrop=0
+17:58:42 round 8 off xdp_udp
+17:59:01 RESULT xdp-udp off 8 pps 237416  cpu2_busy=100.0 cpu2_soft=54.1 cpu4_busy=42.4 cpu4_soft=0.0 dt=15.01 nic_rx=0 nic_rxdrop=0 nic_rxmissed=0 nic_tx=0 nic_txdrop=0 vethB0_rx=1 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=3564729 vethB0_txdrop=0 vethB1_rx=3564717 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=1 vethB1_txdrop=0
+17:59:01 round 8 off xdpdrop_udp
+17:59:24 RESULT xdpdrop-udp off 8 pps 385253  cpu2_busy=100.0 cpu2_soft=31.2 cpu4_busy=0.0 cpu4_soft=0.0 dt=15.01 nic_rx=23 nic_rxdrop=0 nic_rxmissed=0 nic_tx=21 nic_txdrop=0 vethB0_rx=1 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=5784406 vethB0_txdrop=0 vethB1_rx=5784418 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=1 vethB1_txdrop=0
+17:59:24 round 8 off push_udp
+17:59:48 RESULT push-udp off 8 pps 386861  cpu2_busy=100.0 cpu2_soft=11.5 cpu4_busy=0.0 cpu4_soft=0.0 bpf= dt=15.01 nic_rx=23 nic_rxdrop=0 nic_rxmissed=0 nic_tx=21 nic_txdrop=0 vethB0_rx=0 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=5808603 vethB0_txdrop=0 vethB1_rx=5808553 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=0 vethB1_txdrop=0
+17:59:48 round 8 off uplink_udp
+18:00:11 RESULT uplink-udp off 8 pps 191303  cpu2_busy=100.0 cpu2_soft=59.2 cpu4_busy=0.0 cpu4_soft=0.0 bpf= dt=15.01 nic_rx=0 nic_rxdrop=0 nic_rxmissed=0 nic_tx=2872298 nic_txdrop=0 vethB0_rx=2872316 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=1 vethB0_txdrop=0 vethB1_rx=1 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=2872317 vethB1_txdrop=0
+18:00:12 veth = on, xdp_tx_extra_headroom Y
+18:00:12 round 8 on plain_udp
+18:00:31 RESULT plain-udp on 8 pps 288586  cpu2_busy=100.0 cpu2_soft=44.6 cpu4_busy=45.5 cpu4_soft=0.0 dt=15.01 nic_rx=0 nic_rxdrop=0 nic_rxmissed=0 nic_tx=0 nic_txdrop=0 vethB0_rx=1 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=4333032 vethB0_txdrop=0 vethB1_rx=4332985 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=1 vethB1_txdrop=0
+18:00:31 round 8 on xdp_udp
+18:00:50 RESULT xdp-udp on 8 pps 281132  cpu2_busy=100.0 cpu2_soft=44.9 cpu4_busy=44.7 cpu4_soft=0.0 dt=15.01 nic_rx=23 nic_rxdrop=0 nic_rxmissed=0 nic_tx=21 nic_txdrop=0 vethB0_rx=1 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=4221114 vethB0_txdrop=0 vethB1_rx=4221078 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=1 vethB1_txdrop=0
+18:00:50 round 8 on xdpdrop_udp
+18:01:14 RESULT xdpdrop-udp on 8 pps 458259  cpu2_busy=100.0 cpu2_soft=17.2 cpu4_busy=0.0 cpu4_soft=0.0 dt=15.01 nic_rx=0 nic_rxdrop=0 nic_rxmissed=0 nic_tx=0 nic_txdrop=0 vethB0_rx=0 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=6880552 vethB0_txdrop=0 vethB1_rx=6880531 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=0 vethB1_txdrop=0
+18:01:14 round 8 on push_udp
+18:01:37 RESULT push-udp on 8 pps 452849  cpu2_busy=100.0 cpu2_soft=14.6 cpu4_busy=0.0 cpu4_soft=0.0 bpf={"value":{".bss":[{"pushes":8597087},{"reallocated":0}]}} dt=15.01 nic_rx=0 nic_rxdrop=0 nic_rxmissed=0 nic_tx=0 nic_txdrop=0 vethB0_rx=1 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=6799257 vethB0_txdrop=0 vethB1_rx=6799252 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=1 vethB1_txdrop=0
+18:01:37 round 8 on uplink_udp
+18:02:01 RESULT uplink-udp on 8 pps 217861  cpu2_busy=100.0 cpu2_soft=55.4 cpu4_busy=0.0 cpu4_soft=0.0 bpf={"value":{".bss":[{"pushes":4132734},{"reallocated":0}]}} dt=15.01 nic_rx=23 nic_rxdrop=0 nic_rxmissed=0 nic_tx=3271084 nic_txdrop=0 vethB0_rx=3271035 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=1 vethB0_txdrop=0 vethB1_rx=1 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=3271006 vethB1_txdrop=0
+18:02:01 veth = on, xdp_tx_extra_headroom Y
+18:02:01 round 9 on plain_udp
+18:02:21 RESULT plain-udp on 9 pps 285921  cpu2_busy=100.0 cpu2_soft=45.9 cpu4_busy=45.9 cpu4_soft=0.0 dt=15.01 nic_rx=23 nic_rxdrop=0 nic_rxmissed=0 nic_tx=21 nic_txdrop=0 vethB0_rx=1 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=4292884 vethB0_txdrop=0 vethB1_rx=4292933 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=1 vethB1_txdrop=0
+18:02:21 round 9 on xdp_udp
+18:02:40 RESULT xdp-udp on 9 pps 283479  cpu2_busy=100.0 cpu2_soft=46.1 cpu4_busy=44.2 cpu4_soft=0.0 dt=15.01 nic_rx=0 nic_rxdrop=0 nic_rxmissed=0 nic_tx=0 nic_txdrop=0 vethB0_rx=1 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=4256174 vethB0_txdrop=0 vethB1_rx=4256293 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=1 vethB1_txdrop=0
+18:02:40 round 9 on xdpdrop_udp
+18:03:03 RESULT xdpdrop-udp on 9 pps 449618  cpu2_busy=100.0 cpu2_soft=18.6 cpu4_busy=0.0 cpu4_soft=0.0 dt=15.01 nic_rx=2 nic_rxdrop=0 nic_rxmissed=0 nic_tx=2 nic_txdrop=0 vethB0_rx=1 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=6750778 vethB0_txdrop=0 vethB1_rx=6750813 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=1 vethB1_txdrop=0
+18:03:03 round 9 on push_udp
+18:03:27 RESULT push-udp on 9 pps 467871  cpu2_busy=100.0 cpu2_soft=14.6 cpu4_busy=0.1 cpu4_soft=0.0 bpf={"value":{".bss":[{"pushes":8888185},{"reallocated":0}]}} dt=15.01 nic_rx=23 nic_rxdrop=0 nic_rxmissed=0 nic_tx=21 nic_txdrop=0 vethB0_rx=0 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=7024928 vethB0_txdrop=0 vethB1_rx=7024905 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=0 vethB1_txdrop=0
+18:03:27 round 9 on uplink_udp
+18:03:51 RESULT uplink-udp on 9 pps 221113  cpu2_busy=100.0 cpu2_soft=55.7 cpu4_busy=0.0 cpu4_soft=0.0 bpf={"value":{".bss":[{"pushes":4193913},{"reallocated":0}]}} dt=15.01 nic_rx=23 nic_rxdrop=0 nic_rxmissed=0 nic_tx=3319954 nic_txdrop=0 vethB0_rx=3319926 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=1 vethB0_txdrop=0 vethB1_rx=1 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=3319952 vethB1_txdrop=0
+18:03:51 veth = off, xdp_tx_extra_headroom N
+18:03:51 round 9 off plain_udp
+18:04:10 RESULT plain-udp off 9 pps 282554  cpu2_busy=100.0 cpu2_soft=45.1 cpu4_busy=46.8 cpu4_soft=0.0 dt=15.01 nic_rx=0 nic_rxdrop=0 nic_rxmissed=0 nic_tx=0 nic_txdrop=0 vethB0_rx=1 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=4242463 vethB0_txdrop=0 vethB1_rx=4242431 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=1 vethB1_txdrop=0
+18:04:10 round 9 off xdp_udp
+18:04:30 RESULT xdp-udp off 9 pps 238818  cpu2_busy=100.0 cpu2_soft=54.1 cpu4_busy=42.1 cpu4_soft=0.0 dt=15.01 nic_rx=8 nic_rxdrop=0 nic_rxmissed=0 nic_tx=8 nic_txdrop=0 vethB0_rx=1 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=3585762 vethB0_txdrop=0 vethB1_rx=3585764 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=1 vethB1_txdrop=0
+18:04:30 round 9 off xdpdrop_udp
+18:04:53 RESULT xdpdrop-udp off 9 pps 385959  cpu2_busy=100.0 cpu2_soft=31.9 cpu4_busy=0.0 cpu4_soft=0.0 dt=15.01 nic_rx=23 nic_rxdrop=0 nic_rxmissed=0 nic_tx=21 nic_txdrop=0 vethB0_rx=1 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=5795091 vethB0_txdrop=0 vethB1_rx=5795047 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=1 vethB1_txdrop=0
+18:04:53 round 9 off push_udp
+18:05:17 RESULT push-udp off 9 pps 385396  cpu2_busy=100.0 cpu2_soft=10.8 cpu4_busy=0.0 cpu4_soft=0.0 bpf= dt=15.01 nic_rx=0 nic_rxdrop=0 nic_rxmissed=0 nic_tx=0 nic_txdrop=0 vethB0_rx=1 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=5786536 vethB0_txdrop=0 vethB1_rx=5786495 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=1 vethB1_txdrop=0
+18:05:17 round 9 off uplink_udp
+18:05:40 RESULT uplink-udp off 9 pps 187344  cpu2_busy=100.0 cpu2_soft=60.5 cpu4_busy=0.0 cpu4_soft=0.0 bpf= dt=15.01 nic_rx=0 nic_rxdrop=0 nic_rxmissed=0 nic_tx=2812860 nic_txdrop=0 vethB0_rx=2812861 vethB0_rxdrop=0 vethB0_rxmissed=0 vethB0_tx=0 vethB0_txdrop=0 vethB1_rx=0 vethB1_rxdrop=0 vethB1_rxmissed=0 vethB1_tx=2812866 vethB1_txdrop=0
+18:05:40 DONE: 90 result lines in /users/user/tx-extra-headroom-bench/results/2026-11-19-gain/bench-results.tsv
+18:05:40 restore
+18:05:41 EXIT
+RUN_EXIT=0

@@ -1,0 +1,12 @@
+[   52.820883] NOTICE: Automounting of tracing to debugfs is deprecated and will be removed in 2030
+[  123.763467] vethB1: renamed from veth0
+[  321.832735] vethB1: renamed from veth0
+[  650.280530] vethB1: renamed from veth0
+[  760.011762] vethB1: renamed from veth0
+[ 1088.557454] vethB1: renamed from veth0
+[ 1198.271682] vethB1: renamed from veth0
+[ 1526.810464] vethB1: renamed from veth0
+[ 1629.196713] perf: interrupt took too long (2510 > 2500), lowering kernel.perf_event_max_sample_rate to 79000
+[ 1636.533743] vethB1: renamed from veth0
+[ 1965.048507] vethB1: renamed from veth0
+[ 2074.755753] vethB1: renamed from veth0

@@ -1,0 +1,10 @@
+needed_headroom 256: stock -> headroom256 veth.ko, base kernel, median of all rounds (range)
+  netns sends TCP to host                       32.066 (31.552-32.287)   30.751 (30.304-31.116) Gbit/s  -4.1%  expanded 0% -> 100%  rounds 9/9
+  host forwards 1400B UDP into netns             0.583 (0.578-0.584)    0.366 (0.363-0.368) Mpps  -37.2%  expanded 0% -> 100%  rounds 9/9
+
+tx_extra_headroom: off -> on, series kernel, 1400-byte UDP payload, median of all rounds (range)
+  host to netns, nothing attached                0.288 (0.283-0.291)    0.289 (0.283-0.292) Mpps  +0.3%  expanded 0% -> 0%  rounds 9/9
+  host to netns, generic XDP_PASS in netns       0.237 (0.234-0.239)    0.283 (0.279-0.287) Mpps  +19.4%  expanded 100% -> 0%  rounds 9/9
+  host to netns, generic XDP_DROP in netns       0.386 (0.382-0.388)    0.465 (0.450-0.471) Mpps  +20.5%  expanded 100% -> 0%  rounds 9/9
+  host to netns, 20-byte push at TC egress       0.385 (0.384-0.388)    0.468 (0.442-0.472) Mpps  +21.5%  expanded 100% -> 0%  rounds 9/9
+  netns to uplink, 20-byte push on the uplink    0.190 (0.186-0.193)    0.219 (0.214-0.223) Mpps  +15.2%  expanded 100% -> 0%  rounds 9/9

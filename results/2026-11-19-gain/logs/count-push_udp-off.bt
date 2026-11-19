@@ -1,0 +1,14 @@
+
+
+@expand[vethB0, bpf_skb_adjust_room]: 2228204
+
+
+@out[vethB1]: 5
+@out[vethB0]: 2228211
+@out_headroom_at_ip[vethB0, 196]: 1
+@out_headroom_at_ip[vethB1, 196]: 1
+@out_headroom_at_ip[vethB1, 204]: 4
+@out_headroom_at_ip[vethB0, 204]: 6
+@out_headroom_at_ip[vethB0, 16]: 2228204
+@vethB1_copy: 0
+@vethB1_xdp_rcv: 0

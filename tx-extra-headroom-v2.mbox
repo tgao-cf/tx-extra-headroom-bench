@@ -1,0 +1,2219 @@
+From e57566f6d976da39b25fb9c35ddf36820de0ca60 Mon Sep 17 00:00:00 2001
+From: David Keogh <dkeogh@amazon.com>
+Date: Thu, 15 Oct 2026 23:53:30 +0000
+Subject: [PATCH 01/11] net: add tx_extra_headroom and
+ netdev_get_alloc_headroom()
+
+Programs attached at TC egress commonly push additional headers onto a
+packet, for example to encapsulate it. When the packet does not carry
+enough headroom the BPF helpers reallocate the head, which costs an
+allocation and a copy per packet.
+
+Locally generated UDP, raw and AF_PACKET traffic is allocated with
+exactly LL_RESERVED_SPACE() of headroom, which only covers the
+link-layer header and the driver's needed_headroom.
+
+Add a tx_extra_headroom field to struct net_device for that purpose,
+together with netdev_get_alloc_headroom() and
+netdev_get_alloc_headroom_hlen(). These add the extra reservation to the
+header length before the HH_DATA_MOD alignment, so the alignment of the
+link-layer header does not change. netdev_get_alloc_needed_headroom()
+returns needed_headroom plus the extra reservation, for callers that do
+their own alignment.
+
+The new functions are intended only for sites that allocate new packets.
+LL_RESERVED_SPACE() keeps its current meaning and remains the threshold
+used when checking whether an existing packet must be expanded, so the
+extra reservation never forces a reallocation on its own: packets that
+already have enough room for the headers being pushed, such as TCP
+segments built with MAX_TCP_HEADER, are left alone.
+
+Keep the extra reservation separate from needed_headroom so that driver
+updates of their own requirement do not clobber it. Place the field in
+the padding that follows needed_headroom, which keeps it in the TX
+read-mostly cacheline group.
+
+The field is not set anywhere yet. Later patches set it from XDP on a
+veth peer, from TC egress programs and from a veth attribute.
+
+Also remove LL_RESERVED_SPACE_EXTRA(). It has had no user since
+commit 6d5431555de0 ("caif: remove CAIF NETWORK LAYER"). It could add
+the extra headroom, but it reads dev->hard_header_len itself. AF_PACKET
+must use the value that it read once, see commit 03390aa32e66 ("packet:
+use consistent hard_header_len in non-ring send paths").
+netdev_get_alloc_headroom_hlen() takes the header length as an argument
+instead.
+
+Signed-off-by: David Keogh <dkeogh@amazon.com>
+Co-developed-by: Tianyi Gao <tianyi@cloudflare.com>
+Signed-off-by: Tianyi Gao <tianyi@cloudflare.com>
+---
+v2:
+- Turn LL_ALLOC_SPACE() and LL_ALLOC_SPACE_EX() into the static inline
+  functions netdev_get_alloc_headroom() and
+  netdev_get_alloc_headroom_hlen(), and rename
+  netdev_tx_alloc_headroom() to netdev_get_alloc_needed_headroom()
+  (Willem).
+- Move the netdevices.rst section here from v1 3/8, without the IFLA
+  part.
+---
+ .../networking/net_cachelines/net_device.rst  |  1 +
+ Documentation/networking/netdevices.rst       | 13 +++++++
+ include/linux/netdevice.h                     | 34 +++++++++++++++++--
+ net/core/dev.c                                |  1 +
+ 4 files changed, 46 insertions(+), 3 deletions(-)
+
+diff --git a/Documentation/networking/net_cachelines/net_device.rst b/Documentation/networking/net_cachelines/net_device.rst
+index 7620d3fcb8dc..4341e9e443ba 100644
+--- a/Documentation/networking/net_cachelines/net_device.rst
++++ b/Documentation/networking/net_cachelines/net_device.rst
+@@ -35,6 +35,7 @@ unsigned_short                      gflags
+ unsigned_short                      hard_header_len             read_mostly         read_mostly         ip6_xmit(tx);gro_list_prepare(rx)
+ unsigned_int                        mtu                         read_mostly                             ip_finish_output2
+ unsigned_short                      needed_headroom             read_mostly                             LL_RESERVED_SPACE/ip_finish_output2
++unsigned_short                      tx_extra_headroom           read_mostly                             netdev_get_alloc_headroom/__ip_append_data
+ unsigned_short                      needed_tailroom
+ netdev_features_t                   features                    read_mostly         read_mostly         HARD_TX_LOCK,netif_skb_features,sk_setup_caps(tx);netif_elide_gro(rx)
+ netdev_features_t                   hw_features
+diff --git a/Documentation/networking/netdevices.rst b/Documentation/networking/netdevices.rst
+index 6a87f09e7015..f593b242da9c 100644
+--- a/Documentation/networking/netdevices.rst
++++ b/Documentation/networking/netdevices.rst
+@@ -441,6 +441,19 @@ from a notifier.
+ 
+ Drivers **must not** generate nested notifications of the ops-locked types.
+ 
++TX headroom reservation
++=======================
++
++``tx_extra_headroom`` is extra headroom for locally generated packets. The
++stack adds it when it allocates such a packet for the device, so that
++headers pushed later, for example at TC egress, fit without a
++reallocation. It is at most 512 bytes.
++
++Unlike ``needed_headroom``, it is not a driver requirement and stacked
++devices do not inherit it. It is not part of ``LL_RESERVED_SPACE()``, so a
++packet that reaches the device with less headroom, such as a forwarded
++packet, is not reallocated because of it.
++
+ NETDEV_INTERNAL symbol namespace
+ ================================
+ 
+diff --git a/include/linux/netdevice.h b/include/linux/netdevice.h
+index 0325c6f2a7d1..392e6fc81e34 100644
+--- a/include/linux/netdevice.h
++++ b/include/linux/netdevice.h
+@@ -311,9 +311,6 @@ struct hh_cache {
+ 	  & ~(HH_DATA_MOD - 1)) + HH_DATA_MOD)
+ #define LL_RESERVED_SPACE(dev) \
+ 	LL_RESERVED_SPACE_EX(dev, (dev)->hard_header_len)
+-#define LL_RESERVED_SPACE_EXTRA(dev,extra) \
+-	((((dev)->hard_header_len + READ_ONCE((dev)->needed_headroom) + (extra)) \
+-	  & ~(HH_DATA_MOD - 1)) + HH_DATA_MOD)
+ 
+ struct header_ops {
+ 	int	(*create) (struct sk_buff *skb, struct net_device *dev,
+@@ -1934,6 +1931,8 @@ enum netdev_reg_state {
+  *
+  *	@needed_headroom: Extra headroom the hardware may need, but not in all
+  *			  cases can this be guaranteed
++ *	@tx_extra_headroom: Extra headroom for locally generated packets, for
++ *			    headers pushed after the allocation
+  *	@needed_tailroom: Extra tailroom the hardware may need, but not in all
+  *			  cases can this be guaranteed. Some cases also use
+  *			  LL_MAX_HEADER instead to allocate the skb
+@@ -2196,6 +2195,8 @@ struct net_device {
+ 	 */
+ 	unsigned int		mtu;
+ 	unsigned short		needed_headroom;
++#define NETDEV_TX_EXTRA_HEADROOM_MAX	512
++	unsigned short		tx_extra_headroom;
+ 	struct netdev_tc_txq	tc_to_txq[TC_MAX_QUEUE];
+ #ifdef CONFIG_XPS
+ 	struct xps_dev_maps __rcu *xps_maps[XPS_MAPS_MAX];
+@@ -2778,6 +2779,33 @@ struct netdev_queue *netdev_core_pick_tx(struct net_device *dev,
+ 					 struct sk_buff *skb,
+ 					 struct net_device *sb_dev);
+ 
++/* Headroom to reserve when allocating a locally generated packet for dev.
++ * Code that checks the headroom of an existing packet keeps using
++ * LL_RESERVED_SPACE(), so tx_extra_headroom never forces a reallocation.
++ */
++static inline unsigned int
++netdev_get_alloc_headroom_hlen(const struct net_device *dev, unsigned int hlen)
++{
++	return LL_RESERVED_SPACE_EX(dev,
++				    hlen + READ_ONCE(dev->tx_extra_headroom));
++}
++
++static inline unsigned int
++netdev_get_alloc_headroom(const struct net_device *dev)
++{
++	return netdev_get_alloc_headroom_hlen(dev, dev->hard_header_len);
++}
++
++/* Same as netdev_get_alloc_headroom() without hard_header_len and alignment,
++ * for callers that size the headroom themselves.
++ */
++static inline unsigned int
++netdev_get_alloc_needed_headroom(const struct net_device *dev)
++{
++	return READ_ONCE(dev->needed_headroom) +
++	       READ_ONCE(dev->tx_extra_headroom);
++}
++
+ /* returns the headroom that the master device needs to take in account
+  * when forwarding to this dev
+  */
+diff --git a/net/core/dev.c b/net/core/dev.c
+index d88af07aea29..85b7c61015c7 100644
+--- a/net/core/dev.c
++++ b/net/core/dev.c
+@@ -13692,6 +13692,7 @@ static void __init net_dev_struct_check(void)
+ 	CACHELINE_ASSERT_GROUP_MEMBER(struct net_device, net_device_read_tx, num_tc);
+ 	CACHELINE_ASSERT_GROUP_MEMBER(struct net_device, net_device_read_tx, mtu);
+ 	CACHELINE_ASSERT_GROUP_MEMBER(struct net_device, net_device_read_tx, needed_headroom);
++	CACHELINE_ASSERT_GROUP_MEMBER(struct net_device, net_device_read_tx, tx_extra_headroom);
+ 	CACHELINE_ASSERT_GROUP_MEMBER(struct net_device, net_device_read_tx, tc_to_txq);
+ #ifdef CONFIG_XPS
+ 	CACHELINE_ASSERT_GROUP_MEMBER(struct net_device, net_device_read_tx, xps_maps);
+-- 
+2.56.0
+
+
+From 584d5da4be8a210fd22cc75f10073a5b7fb1943b Mon Sep 17 00:00:00 2001
+From: David Keogh <dkeogh@amazon.com>
+Date: Wed, 11 Nov 2026 23:19:37 +0000
+Subject: [PATCH 02/11] net: reserve extra TX headroom for local egress
+
+Use netdev_get_alloc_headroom() and netdev_get_alloc_headroom_hlen()
+instead of LL_RESERVED_SPACE() and LL_RESERVED_SPACE_EX() where the
+stack allocates packets on behalf of a local sender and sizes them for
+the output device:
+
+ - __ip_append_data() and __ip6_append_data(), covering UDP, ICMP,
+   ping and raw sockets without IP_HDRINCL;
+ - raw_send_hdrinc() and rawv6_send_hdrinc();
+ - the three AF_PACKET transmit paths;
+ - AF_XDP copy mode, which open-codes its own calculation from
+   needed_headroom and now uses netdev_get_alloc_needed_headroom().
+
+These are the main paths where a packet's headroom is decided by the
+device's advertised requirement and nothing else. Adding the extra
+reservation here means such packets reach the TC egress hook with room
+for additional headers already in place.
+
+Paths that check an existing packet against LL_RESERVED_SPACE() and
+expand it on demand, such as ip_finish_output2() and the tunnel
+transmit functions, are deliberately left alone. Using the larger value
+there would force a reallocation of every packet that lacks the full
+extra reservation, including TCP segments that already have enough
+room for the headers an egress program actually pushes.
+
+ip_do_fragment() and ip6_fragment() are also left alone. They use the
+same value to check the headroom of existing fragments and to size new
+ones. A larger value would send more packets to the slow path, which
+copies them. A local sender's fragments normally come from
+__ip_append_data() or __ip6_append_data().
+
+Signed-off-by: David Keogh <dkeogh@amazon.com>
+Co-developed-by: Tianyi Gao <tianyi@cloudflare.com>
+Signed-off-by: Tianyi Gao <tianyi@cloudflare.com>
+---
+v2:
+- Follow the renames in patch 1.
+---
+ net/ipv4/ip_output.c   | 2 +-
+ net/ipv4/raw.c         | 2 +-
+ net/ipv6/ip6_output.c  | 2 +-
+ net/ipv6/raw.c         | 2 +-
+ net/packet/af_packet.c | 7 ++++---
+ net/xdp/xsk.c          | 6 ++++--
+ 6 files changed, 12 insertions(+), 9 deletions(-)
+
+diff --git a/net/ipv4/ip_output.c b/net/ipv4/ip_output.c
+index 5d6f5f5fc0ed..dedea01c6adc 100644
+--- a/net/ipv4/ip_output.c
++++ b/net/ipv4/ip_output.c
+@@ -988,7 +988,7 @@ static int __ip_append_data(struct sock *sk,
+ 	mtu = cork->gso_size ? IP_MAX_MTU : cork->fragsize;
+ 	paged = !!cork->gso_size;
+ 
+-	hh_len = LL_RESERVED_SPACE(rt->dst.dev);
++	hh_len = netdev_get_alloc_headroom(rt->dst.dev);
+ 
+ 	fragheaderlen = sizeof(struct iphdr) + (opt ? opt->optlen : 0);
+ 	maxfraglen = ((mtu - fragheaderlen) & ~7) + fragheaderlen;
+diff --git a/net/ipv4/raw.c b/net/ipv4/raw.c
+index f33a9dfc5309..85e2178f36d6 100644
+--- a/net/ipv4/raw.c
++++ b/net/ipv4/raw.c
+@@ -356,7 +356,7 @@ static int raw_send_hdrinc(struct sock *sk, struct flowi4 *fl4,
+ 	if (flags&MSG_PROBE)
+ 		goto out;
+ 
+-	hlen = LL_RESERVED_SPACE(rt->dst.dev);
++	hlen = netdev_get_alloc_headroom(rt->dst.dev);
+ 	tlen = rt->dst.dev->needed_tailroom;
+ 	skb = sock_alloc_send_skb(sk,
+ 				  length + hlen + tlen + 15,
+diff --git a/net/ipv6/ip6_output.c b/net/ipv6/ip6_output.c
+index 3cc911f6618e..50393d9a81ee 100644
+--- a/net/ipv6/ip6_output.c
++++ b/net/ipv6/ip6_output.c
+@@ -1493,7 +1493,7 @@ static int __ip6_append_data(struct sock *sk,
+ 	mtu = cork->gso_size ? IP6_MAX_MTU : cork->fragsize;
+ 	orig_mtu = mtu;
+ 
+-	hh_len = LL_RESERVED_SPACE(rt->dst.dev);
++	hh_len = netdev_get_alloc_headroom(rt->dst.dev);
+ 
+ 	fragheaderlen = sizeof(struct ipv6hdr) + rt->rt6i_nfheader_len +
+ 			(opt ? opt->opt_nflen : 0);
+diff --git a/net/ipv6/raw.c b/net/ipv6/raw.c
+index 00d832c7cdae..00cf7475462e 100644
+--- a/net/ipv6/raw.c
++++ b/net/ipv6/raw.c
+@@ -602,7 +602,7 @@ static int rawv6_send_hdrinc(struct sock *sk, struct msghdr *msg, int length,
+ 	struct sk_buff *skb;
+ 	int err;
+ 	struct rt6_info *rt = dst_rt6_info(*dstp);
+-	int hlen = LL_RESERVED_SPACE(rt->dst.dev);
++	int hlen = netdev_get_alloc_headroom(rt->dst.dev);
+ 	int tlen = rt->dst.dev->needed_tailroom;
+ 
+ 	if (length > rt->dst.dev->mtu) {
+diff --git a/net/packet/af_packet.c b/net/packet/af_packet.c
+index 6ace2a5b2d17..a1932a0e5e42 100644
+--- a/net/packet/af_packet.c
++++ b/net/packet/af_packet.c
+@@ -2032,7 +2032,8 @@ static int packet_sendmsg_spkt(struct socket *sock, struct msghdr *msg,
+ 		goto out_unlock;
+ 
+ 	if (!skb) {
+-		size_t reserved = LL_RESERVED_SPACE_EX(dev, hard_header_len);
++		size_t reserved =
++			netdev_get_alloc_headroom_hlen(dev, hard_header_len);
+ 		int tlen = dev->needed_tailroom;
+ 		unsigned int hhlen = dev->header_ops ? hard_header_len : 0;
+ 
+@@ -2860,7 +2861,7 @@ static int tpacket_snd(struct packet_sock *po, struct msghdr *msg)
+ 			goto tpacket_error;
+ 
+ 		status = TP_STATUS_SEND_REQUEST;
+-		hlen = LL_RESERVED_SPACE_EX(dev, hard_header_len);
++		hlen = netdev_get_alloc_headroom_hlen(dev, hard_header_len);
+ 		tlen = dev->needed_tailroom;
+ 		if (vnet_hdr_sz) {
+ 			data += vnet_hdr_sz;
+@@ -3087,7 +3088,7 @@ static int packet_snd(struct socket *sock, struct msghdr *msg, size_t len)
+ 		goto out_unlock;
+ 
+ 	err = -ENOBUFS;
+-	hlen = LL_RESERVED_SPACE_EX(dev, hard_header_len);
++	hlen = netdev_get_alloc_headroom_hlen(dev, hard_header_len);
+ 	tlen = dev->needed_tailroom;
+ 	linear = __virtio16_to_cpu(vio_le(), vnet_hdr.hdr_len);
+ 	linear = max(linear, min_t(int, len, hard_header_len));
+diff --git a/net/xdp/xsk.c b/net/xdp/xsk.c
+index f22f9a2cdbbe..5932add2879f 100644
+--- a/net/xdp/xsk.c
++++ b/net/xdp/xsk.c
+@@ -1047,7 +1047,8 @@ static struct sk_buff *xsk_build_skb_zerocopy(struct xdp_sock *xs,
+ 	buffer = xsk_buff_raw_get_data(pool, addr);
+ 
+ 	if (!skb) {
+-		hr = max(NET_SKB_PAD, L1_CACHE_ALIGN(xs->dev->needed_headroom));
++		hr = netdev_get_alloc_needed_headroom(xs->dev);
++		hr = max(NET_SKB_PAD, L1_CACHE_ALIGN(hr));
+ 
+ 		skb = sock_alloc_send_skb(&xs->sk, hr, 1, &err);
+ 		if (unlikely(!skb))
+@@ -1130,7 +1131,8 @@ static struct sk_buff *xsk_build_skb(struct xdp_sock *xs,
+ 		len = desc->len;
+ 
+ 		if (!skb) {
+-			hr = max(NET_SKB_PAD, L1_CACHE_ALIGN(dev->needed_headroom));
++			hr = netdev_get_alloc_needed_headroom(dev);
++			hr = max(NET_SKB_PAD, L1_CACHE_ALIGN(hr));
+ 			tr = dev->needed_tailroom;
+ 			skb = sock_alloc_send_skb(&xs->sk, hr + len + tr, 1, &err);
+ 			if (unlikely(!skb))
+-- 
+2.56.0
+
+
+From 5eba12a607696d62eb1f256d05170399d216d1ea Mon Sep 17 00:00:00 2001
+From: Tianyi Gao <tianyi@cloudflare.com>
+Date: Wed, 11 Nov 2026 23:23:07 +0000
+Subject: [PATCH 03/11] net: set tx_extra_headroom of the peer on XDP attach
+
+XDP needs XDP_PACKET_HEADROOM (256 bytes), but locally generated packets
+only get needed_headroom. XDP on the peer of a veth or netkit device
+then copies every packet. Generic XDP copies it in
+netif_skb_check_for_xdp(), and native XDP on veth in
+veth_convert_skb_to_xdp_buff().
+
+While the peer has an XDP program, set tx_extra_headroom of the device
+to XDP_PACKET_HEADROOM minus needed_headroom.
+netdev_update_tx_extra_headroom() recalculates it when an XDP program
+is attached or detached, also when an upper device such as a bond
+propagates its program to the peer with netif_xdp_propagate(). It does
+not recalculate it:
+
+- for IFLA_NETKIT_HEADROOM, which cannot change after the netkit
+  device is created,
+- in dev_xdp_uninstall(), because veth and netkit unregister both ends
+  together,
+- when bridge or openvswitch change needed_headroom later.
+
+openvswitch changes needed_headroom under ovs_mutex, without RTNL.
+There are three ways to handle a later change of needed_headroom:
+
+- Recalculate tx_extra_headroom in netdev_set_rx_headroom(). This
+  races with an XDP attach or detach under RTNL. The last write can
+  leave tx_extra_headroom at 0 while XDP is attached.
+- Do not subtract needed_headroom. This always reserves needed_headroom
+  bytes more than XDP needs.
+- Subtract needed_headroom only when tx_extra_headroom is recalculated.
+
+This patch uses the last one, because it does not race and reserves
+only what XDP needs. If needed_headroom shrinks later, XDP on the peer
+copies packets again until the next recalculation.
+
+tx_extra_headroom is used rather than needed_headroom, because raising
+needed_headroom can regress the performance of other paths.
+
+Signed-off-by: Tianyi Gao <tianyi@cloudflare.com>
+---
+For native XDP on veth, this patch removes one of two copy
+conditions, the missing headroom. The other condition is a head that is
+not a page fragment. A follow-up veth series will fix that.
+
+v2:
+- New patch, replaces IFLA_TX_EXTRA_HEADROOM for XDP on the peer
+  (Stephen).
+---
+ Documentation/networking/netdevices.rst | 11 +++++++
+ include/linux/netdevice.h               |  1 +
+ net/core/dev.c                          | 38 +++++++++++++++++++++++++
+ 3 files changed, 50 insertions(+)
+
+diff --git a/Documentation/networking/netdevices.rst b/Documentation/networking/netdevices.rst
+index f593b242da9c..53ca8439f73b 100644
+--- a/Documentation/networking/netdevices.rst
++++ b/Documentation/networking/netdevices.rst
+@@ -454,6 +454,17 @@ devices do not inherit it. It is not part of ``LL_RESERVED_SPACE()``, so a
+ packet that reaches the device with less headroom, such as a forwarded
+ packet, is not reallocated because of it.
+ 
++The kernel sets ``tx_extra_headroom`` of a device to the sum of these
++values:
++
++* ``XDP_PACKET_HEADROOM`` (256 bytes) minus ``needed_headroom``, when the
++  peer of a veth or netkit device has an XDP program
++
++When the peer has an XDP program, locally generated UDP, raw and
++AF_PACKET packets and AF_XDP packets in copy mode have enough headroom
++for it. ``tx_extra_headroom`` is not recalculated when a bridge or
++openvswitch changes ``needed_headroom`` later.
++
+ NETDEV_INTERNAL symbol namespace
+ ================================
+ 
+diff --git a/include/linux/netdevice.h b/include/linux/netdevice.h
+index 392e6fc81e34..786b63f21d4f 100644
+--- a/include/linux/netdevice.h
++++ b/include/linux/netdevice.h
+@@ -4484,6 +4484,7 @@ int netif_xdp_propagate(struct net_device *dev, struct netdev_bpf *bpf);
+ int dev_xdp_propagate(struct net_device *dev, struct netdev_bpf *bpf);
+ u8 dev_xdp_sb_prog_count(struct net_device *dev);
+ u32 dev_xdp_prog_id(struct net_device *dev, enum bpf_xdp_mode mode);
++void netdev_update_tx_extra_headroom(struct net_device *dev);
+ 
+ u32 dev_get_min_mp_channel_count(const struct net_device *dev);
+ 
+diff --git a/net/core/dev.c b/net/core/dev.c
+index 85b7c61015c7..6e053f612d72 100644
+--- a/net/core/dev.c
++++ b/net/core/dev.c
+@@ -10666,6 +10666,7 @@ int netif_xdp_propagate(struct net_device *dev, struct netdev_bpf *bpf)
+ 	if (old_prog)
+ 		bpf_prog_put(old_prog);
+ 
++	netdev_update_tx_extra_headroom(dev);
+ 	return 0;
+ }
+ EXPORT_SYMBOL_GPL(netif_xdp_propagate);
+@@ -10677,6 +10678,41 @@ u32 dev_xdp_prog_id(struct net_device *dev, enum bpf_xdp_mode mode)
+ 	return prog ? prog->aux->id : 0;
+ }
+ 
++static void __netdev_update_tx_extra_headroom(struct net_device *dev,
++					      struct net_device *peer)
++{
++	unsigned int needed_headroom = READ_ONCE(dev->needed_headroom);
++	unsigned int tx_extra_headroom = 0;
++
++	if (peer && dev_xdp_prog_count(peer) &&
++	    needed_headroom < XDP_PACKET_HEADROOM)
++		tx_extra_headroom = XDP_PACKET_HEADROOM - needed_headroom;
++
++	WRITE_ONCE(dev->tx_extra_headroom, tx_extra_headroom);
++}
++
++/**
++ *	netdev_update_tx_extra_headroom - recalculate tx_extra_headroom
++ *	@dev: the device to check
++ *
++ *	Recalculate tx_extra_headroom of @dev and its peer. Should be called
++ *	after conditions that influence tx_extra_headroom might have changed.
++ *	The caller must hold the RTNL lock.
++ */
++void netdev_update_tx_extra_headroom(struct net_device *dev)
++{
++	struct net_device *peer = NULL;
++
++	rcu_read_lock();
++	if (dev->netdev_ops->ndo_get_peer_dev)
++		peer = dev->netdev_ops->ndo_get_peer_dev(dev);
++	__netdev_update_tx_extra_headroom(dev, peer);
++	if (peer)
++		__netdev_update_tx_extra_headroom(peer, dev);
++	rcu_read_unlock();
++}
++EXPORT_SYMBOL_GPL(netdev_update_tx_extra_headroom);
++
+ static int dev_xdp_install(struct net_device *dev, enum bpf_xdp_mode mode,
+ 			   bpf_op_t bpf_op, struct netlink_ext_ack *extack,
+ 			   u32 flags, struct bpf_prog *prog)
+@@ -10887,6 +10923,7 @@ static int dev_xdp_attach(struct net_device *dev, struct netlink_ext_ack *extack
+ 	if (cur_prog)
+ 		bpf_prog_put(cur_prog);
+ 
++	netdev_update_tx_extra_headroom(dev);
+ 	return 0;
+ }
+ 
+@@ -10913,6 +10950,7 @@ static int dev_xdp_detach_link(struct net_device *dev,
+ 	bpf_op = dev_xdp_bpf_op(dev, mode);
+ 	WARN_ON(dev_xdp_install(dev, mode, bpf_op, NULL, 0, NULL));
+ 	dev_xdp_set_link(dev, mode, NULL);
++	netdev_update_tx_extra_headroom(dev);
+ 	return 0;
+ }
+ 
+-- 
+2.56.0
+
+
+From 37cb023228766c98383108556b4c25d34182af4b Mon Sep 17 00:00:00 2001
+From: Tianyi Gao <tianyi@cloudflare.com>
+Date: Tue, 27 Oct 2026 02:32:31 +0000
+Subject: [PATCH 04/11] selftests: net: add flag to send a frame in xdp_helper
+
+xdp_helper only binds an XDP socket and waits. Tests in selftests/net
+have no way to send a frame through the AF_XDP TX path.
+
+Add a -t option that takes one Ethernet frame in hex. With -t, the
+helper also creates a TX ring, sends the frame and exits. It returns 1
+if sendto() fails. Without -t, nothing changes.
+
+The test passes the whole frame in hex, so xdp_helper does not need to
+know about IP or UDP. veth has no AF_XDP zerocopy support, so the
+socket runs in copy mode. In copy mode the kernel allocates an skb for
+the frame in xsk_build_skb(), which uses the extra headroom. As a test
+helper, -t takes one well-formed frame and does not wait for TX
+completion, because copy mode sends the frame within sendto(). A
+driver with zerocopy support may send it later, so -t is meant for copy
+mode.
+
+send_frame() follows tools/testing/selftests/net/lib/xsk/xsk.c and
+tools/testing/selftests/bpf/prog_tests/xdp_metadata.c. XDP_PGOFF_TX_RING
+(0x80000000) does not fit in a 32-bit off_t. xsk.c also passes it to
+mmap() without _FILE_OFFSET_BITS, so xdp_helper does not define it
+either.
+
+Signed-off-by: Tianyi Gao <tianyi@cloudflare.com>
+---
+v2:
+- Exit after sendto() and do not wait for the TX completion, as
+  xdp_metadata.c does.
+- Drop the _FILE_OFFSET_BITS define, as xsk.c does.
+---
+ tools/testing/selftests/net/lib/xdp_helper.c | 80 ++++++++++++++++++--
+ 1 file changed, 73 insertions(+), 7 deletions(-)
+
+diff --git a/tools/testing/selftests/net/lib/xdp_helper.c b/tools/testing/selftests/net/lib/xdp_helper.c
+index eb025a9f35b1..1111631efd73 100644
+--- a/tools/testing/selftests/net/lib/xdp_helper.c
++++ b/tools/testing/selftests/net/lib/xdp_helper.c
+@@ -19,15 +19,65 @@
+ 
+ static void print_usage(const char *bin)
+ {
+-	fprintf(stderr, "Usage: %s ifindex queue_id [-z]\n\n"
+-		"where:\n\t-z: force zerocopy mode", bin);
++	fprintf(stderr, "Usage: %s ifindex queue_id [-z] [-t frame_hex]\n\n"
++		"where:\n\t-z: force zerocopy mode\n"
++		"\t-t: send one frame, given in hex, and exit\n", bin);
++}
++
++static int parse_frame(unsigned char *buf, const char *hex)
++{
++	size_t len = strlen(hex) / 2;
++	size_t i;
++
++	if (!len || len > 2048 || strlen(hex) % 2)
++		return -1;
++	for (i = 0; i < len; i++)
++		if (sscanf(hex + 2 * i, "%2hhx", &buf[i]) != 1)
++			return -1;
++	return len;
++}
++
++static int send_frame(int sock_fd, __u32 len)
++{
++	struct xdp_mmap_offsets off;
++	socklen_t optlen = sizeof(off);
++	struct xdp_desc *desc;
++	size_t tx_sz;
++	int ret = 0;
++	char *tx;
++
++	if (getsockopt(sock_fd, SOL_XDP, XDP_MMAP_OFFSETS, &off, &optlen)) {
++		perror("getsockopt failed");
++		return 1;
++	}
++
++	tx_sz = off.tx.desc + NUM_DESC * sizeof(*desc);
++	tx = mmap(NULL, tx_sz, PROT_READ | PROT_WRITE, MAP_SHARED, sock_fd,
++		  XDP_PGOFF_TX_RING);
++	if (tx == MAP_FAILED) {
++		perror("TX ring mmap failed");
++		return 1;
++	}
++
++	desc = (struct xdp_desc *)(tx + off.tx.desc);
++	desc->addr = 0;
++	desc->len = len;
++	__atomic_store_n((__u32 *)(tx + off.tx.producer), 1, __ATOMIC_RELEASE);
++
++	if (sendto(sock_fd, NULL, 0, MSG_DONTWAIT, NULL, 0) < 0) {
++		perror("sendto failed");
++		ret = 1;
++	}
++
++	munmap(tx, tx_sz);
++	return ret;
+ }
+ 
+ /* this is a simple helper program that creates an XDP socket and does the
+  * minimum necessary to get bind() to succeed.
+  *
+- * this test program is not intended to actually process packets, but could be
+- * extended in the future if that is actually needed.
++ * without -t it does not process packets. with -t it sends one frame
++ * through the TX ring and exits.
+  *
+  * it is used by queues.py to ensure the xsk netlinux attribute is set
+  * correctly.
+@@ -37,13 +87,15 @@ int main(int argc, char **argv)
+ 	struct xdp_umem_reg umem_reg = { 0 };
+ 	struct sockaddr_xdp sxdp = { 0 };
+ 	int num_desc = NUM_DESC;
++	int frame_len = 0;
+ 	void *umem_area;
+ 	int retry = 0;
+ 	int ifindex;
+ 	int sock_fd;
+ 	int queue;
++	int i;
+ 
+-	if (argc != 3 && argc != 4) {
++	if (argc < 3) {
+ 		print_usage(argv[0]);
+ 		return 1;
+ 	}
+@@ -94,9 +146,20 @@ int main(int argc, char **argv)
+ 	sxdp.sxdp_queue_id = queue;
+ 	sxdp.sxdp_flags = 0;
+ 
+-	if (argc > 3) {
+-		if (!strcmp(argv[3], "-z")) {
++	for (i = 3; i < argc; i++) {
++		if (!strcmp(argv[i], "-z")) {
+ 			sxdp.sxdp_flags = XDP_ZEROCOPY;
++		} else if (!strcmp(argv[i], "-t") && i + 1 < argc) {
++			frame_len = parse_frame(umem_area, argv[++i]);
++			if (frame_len < 0) {
++				print_usage(argv[0]);
++				return 1;
++			}
++			if (setsockopt(sock_fd, SOL_XDP, XDP_TX_RING, &num_desc,
++				       sizeof(num_desc))) {
++				perror("setsockopt XDP_TX_RING failed");
++				return 1;
++			}
+ 		} else {
+ 			print_usage(argv[0]);
+ 			return 1;
+@@ -119,6 +182,9 @@ int main(int argc, char **argv)
+ 		}
+ 	}
+ 
++	if (frame_len)
++		return send_frame(sock_fd, frame_len);
++
+ 	ksft_ready();
+ 	ksft_wait();
+ 
+-- 
+2.56.0
+
+
+From 09122fa03f67ef4c4686457515f9ab95a2d24502 Mon Sep 17 00:00:00 2001
+From: Tianyi Gao <tianyi@cloudflare.com>
+Date: Thu, 12 Nov 2026 00:08:10 +0000
+Subject: [PATCH 05/11] selftests: net: add tx_extra_headroom test
+
+Generic XDP copies an skb with less than XDP_PACKET_HEADROOM (256 bytes)
+of headroom. When XDP is attached to one end of a veth pair, the kernel
+now sets tx_extra_headroom of the other end. A locally generated packet
+then has enough headroom, and generic XDP no longer copies it.
+
+Test this for six senders. Each one allocates the skb in a different
+place: UDP over IPv4 and IPv6, raw sockets with IPPROTO_RAW over IPv4
+and IPv6, AF_PACKET and AF_XDP in copy mode. xdp_helper -t sends the
+AF_XDP frame. The peer runs xdp_dummy in generic mode.
+
+tx_extra_headroom.bpf.c is a TC program. For the test packet it records
+needed_headroom and tx_extra_headroom of skb->dev, and skb->pp_recycle.
+For a frags program, generic XDP copies a packet into a page_pool page.
+At TC ingress of the peer, pp_recycle then shows whether the packet was
+copied. A packet socket for ETH_P_ALL on the sender holds a clone of the
+skb, which forces a copy. This checks that pp_recycle detects the copy.
+
+netkit implements ndo_get_peer_dev too, so the same holds for a netkit
+pair. Test it once, with UDP over IPv4 and netkit in L2 mode.
+
+test_detach attaches native or generic XDP to veth1. needed_headroom of
+veth is 0, so tx_extra_headroom of veth0 must be XDP_PACKET_HEADROOM.
+After detach it must be 0.
+
+test_bond adds veth1 to a bond and attaches native XDP to the bond,
+which propagates it to veth1. tx_extra_headroom of veth0 must again be
+XDP_PACKET_HEADROOM, and 0 after detach.
+
+test_bridge_vxlan adds veth1 to a bridge with a vxlan port. This raises
+needed_headroom of both ends. Then the test attaches XDP.
+needed_headroom plus tx_extra_headroom must be XDP_PACKET_HEADROOM.
+
+The test does not check for netkit, bonding, bridge or vxlan, because
+the selftests/net config enables them.
+
+Signed-off-by: Tianyi Gao <tianyi@cloudflare.com>
+---
+v2:
+- v1 4/8 tested IFLA_TX_EXTRA_HEADROOM and is dropped with it.
+- Built from v1 7/8. Attach XDP to the peer instead of setting
+  IFLA_TX_EXTRA_HEADROOM.
+- Detect the copy with skb->pp_recycle instead of comparing the
+  headroom before and after the attach.
+- Add the cloned, netkit, detach, bond and bridge cases.
+---
+ tools/testing/selftests/net/Makefile          |   1 +
+ tools/testing/selftests/net/lib/xdp_helper.c  |   2 +-
+ .../selftests/net/tx_extra_headroom.bpf.c     |  81 +++++
+ .../selftests/net/tx_extra_headroom.py        | 285 ++++++++++++++++++
+ 4 files changed, 368 insertions(+), 1 deletion(-)
+ create mode 100644 tools/testing/selftests/net/tx_extra_headroom.bpf.c
+ create mode 100755 tools/testing/selftests/net/tx_extra_headroom.py
+
+diff --git a/tools/testing/selftests/net/Makefile b/tools/testing/selftests/net/Makefile
+index c80dabbcc907..76473dc187a4 100644
+--- a/tools/testing/selftests/net/Makefile
++++ b/tools/testing/selftests/net/Makefile
+@@ -123,6 +123,7 @@ TEST_PROGS := \
+ 	test_vxlan_vnifiltering.sh \
+ 	tfo_passive.sh \
+ 	traceroute.sh \
++	tx_extra_headroom.py \
+ 	txtimestamp.sh \
+ 	udpgro.sh \
+ 	udpgro_bench.sh \
+diff --git a/tools/testing/selftests/net/lib/xdp_helper.c b/tools/testing/selftests/net/lib/xdp_helper.c
+index 1111631efd73..5deb97922e6c 100644
+--- a/tools/testing/selftests/net/lib/xdp_helper.c
++++ b/tools/testing/selftests/net/lib/xdp_helper.c
+@@ -80,7 +80,7 @@ static int send_frame(int sock_fd, __u32 len)
+  * through the TX ring and exits.
+  *
+  * it is used by queues.py to ensure the xsk netlinux attribute is set
+- * correctly.
++ * correctly, and by tx_extra_headroom.py to send a frame.
+  */
+ int main(int argc, char **argv)
+ {
+diff --git a/tools/testing/selftests/net/tx_extra_headroom.bpf.c b/tools/testing/selftests/net/tx_extra_headroom.bpf.c
+new file mode 100644
+index 000000000000..d80f4567873a
+--- /dev/null
++++ b/tools/testing/selftests/net/tx_extra_headroom.bpf.c
+@@ -0,0 +1,81 @@
++// SPDX-License-Identifier: GPL-2.0
++/* Record the headroom fields of a test packet. */
++#include <stdbool.h>
++#include <linux/bpf.h>
++#include <linux/if_ether.h>
++#include <linux/in.h>
++#include <linux/ip.h>
++#include <linux/ipv6.h>
++#include <linux/udp.h>
++#include <bpf/bpf_core_read.h>
++#include <bpf/bpf_endian.h>
++#include <bpf/bpf_helpers.h>
++
++#define UDP_TEST_PORT 9999
++
++struct net_device {
++	unsigned short needed_headroom;
++	unsigned short tx_extra_headroom;
++} __attribute__((preserve_access_index));
++
++struct sk_buff {
++	struct net_device *dev;
++	__u8 pp_recycle:1;
++} __attribute__((preserve_access_index));
++
++void *bpf_cast_to_kern_ctx(void *obj) __ksym;
++
++__u32 count;
++__u32 needed_headroom;
++__u32 tx_extra_headroom;
++bool pp_recycle;
++
++static bool is_test_packet(struct __sk_buff *skb)
++{
++	struct ipv6hdr ip6h;
++	struct udphdr udph;
++	struct iphdr iph;
++	__u32 off;
++
++	if (skb->protocol == bpf_htons(ETH_P_IP)) {
++		if (bpf_skb_load_bytes(skb, ETH_HLEN, &iph, sizeof(iph)))
++			return false;
++		if (iph.protocol != IPPROTO_UDP)
++			return false;
++		off = ETH_HLEN + sizeof(iph);
++	} else if (skb->protocol == bpf_htons(ETH_P_IPV6)) {
++		if (bpf_skb_load_bytes(skb, ETH_HLEN, &ip6h, sizeof(ip6h)))
++			return false;
++		if (ip6h.nexthdr != IPPROTO_UDP)
++			return false;
++		off = ETH_HLEN + sizeof(ip6h);
++	} else {
++		return false;
++	}
++
++	if (bpf_skb_load_bytes(skb, off, &udph, sizeof(udph)))
++		return false;
++
++	return udph.dest == bpf_htons(UDP_TEST_PORT);
++}
++
++/* Attached at tcx ingress and at tcx egress. */
++SEC("tc")
++int record(struct __sk_buff *skb)
++{
++	struct sk_buff *kskb;
++
++	if (!is_test_packet(skb))
++		return TCX_NEXT;
++
++	kskb = bpf_cast_to_kern_ctx(skb);
++	needed_headroom = kskb->dev->needed_headroom;
++	tx_extra_headroom = kskb->dev->tx_extra_headroom;
++	/* For a frags program, generic XDP copies into a page_pool page. */
++	pp_recycle = BPF_CORE_READ_BITFIELD(kskb, pp_recycle);
++	count++;
++
++	return TCX_NEXT;
++}
++
++char _license[] SEC("license") = "GPL";
+diff --git a/tools/testing/selftests/net/tx_extra_headroom.py b/tools/testing/selftests/net/tx_extra_headroom.py
+new file mode 100755
+index 000000000000..4058d0e64fc5
+--- /dev/null
++++ b/tools/testing/selftests/net/tx_extra_headroom.py
+@@ -0,0 +1,285 @@
++#!/usr/bin/env python3
++# SPDX-License-Identifier: GPL-2.0
++
++"""Tests for tx_extra_headroom."""
++
++import socket
++import struct
++from pathlib import Path
++
++from lib.py import ksft_run, ksft_exit, ksft_eq, ksft_gt
++from lib.py import KsftSkipEx, KsftFailEx
++from lib.py import ksft_busy_wait, ksft_variants, KsftNamedVariant
++from lib.py import cmd, defer, ip, bpftool, bpf_prog_map_ids
++from lib.py import NetNS, NetNSEnter
++
++BPF_OBJ = Path(__file__).parent / "tx_extra_headroom.bpf.o"
++XDP_OBJ = Path(__file__).parent / "lib/xdp_dummy.bpf.o"
++XDP_HELPER = Path(__file__).parent / "lib/xdp_helper"
++PIN_DIR = Path("/sys/fs/bpf/tx_extra_headroom")
++PORT = 9999  # UDP_TEST_PORT in tx_extra_headroom.bpf.c
++ETH_P_ALL = 0x0003
++XDP_PACKET_HEADROOM = 256
++
++
++def _setup_addrs(peer_ns, dev, peer):
++    """Add addresses to dev and to peer in peer_ns, and bring both up."""
++    ip(f"addr add 192.0.2.1/24 dev {dev}")
++    ip(f"addr add 2001:db8::1/64 dev {dev} nodad")
++    ip(f"link set {dev} up")
++    ip(f"addr add 192.0.2.2/24 dev {peer}", ns=peer_ns)
++    ip(f"addr add 2001:db8::2/64 dev {peer} nodad", ns=peer_ns)
++    ip(f"link set {peer} up", ns=peer_ns)
++    peer_mac = ip(f"link show dev {peer}", json=True, ns=peer_ns)[0]["address"]
++    for addr in ("192.0.2.2", "2001:db8::2"):
++        ip(f"neigh replace {addr} lladdr {peer_mac} dev {dev} nud permanent")
++
++
++def _setup_veth(peer_ns):
++    """Create veth0 in the current netns and its peer veth1 in peer_ns."""
++    ip("link add veth0 type veth peer name veth1")
++    ip(f"link set veth1 netns {peer_ns}")
++    _setup_addrs(peer_ns, "veth0", "veth1")
++
++
++def _attach_xdp(peer_ns, mode="xdpgeneric", dev="veth1"):
++    """Attach xdp_dummy to dev in peer_ns."""
++    # For a frags program, generic XDP copies into a page_pool page.
++    ip(f"link set dev {dev} {mode} obj {XDP_OBJ} sec xdp.frags", ns=peer_ns)
++
++
++def _load_progs():
++    """Load the programs of BPF_OBJ, return the id of their .bss map."""
++    cmd(f"rm -rf {PIN_DIR}", shell=True, fail=False)
++    bpftool(f"prog loadall {BPF_OBJ} {PIN_DIR}")
++    defer(cmd, f"rm -rf {PIN_DIR}", shell=True, fail=False)
++    prog_id = bpftool(f"prog show pinned {PIN_DIR}/record", json=True)["id"]
++    return next(map_id for name, map_id in bpf_prog_map_ids(prog_id).items()
++                if name.endswith(".bss"))
++
++
++def _attach_tcx(dev, direction, prog):
++    """Attach program prog to tcx ingress or egress of dev."""
++    bpftool(f"net attach tcx_{direction} pinned {PIN_DIR}/{prog} dev {dev}")
++
++
++def _read_bss(map_id):
++    """Return the global variables of the programs as a dict."""
++    dump = bpftool(f"map dump id {map_id}", json=True)[0]
++    return {name: val for var in dump["formatted"]["value"][".bss"]
++            for name, val in var.items()}
++
++
++def _send_udp4():
++    """Send one UDP packet from veth0 to veth1."""
++    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
++        s.sendto(b"x", ("192.0.2.2", PORT))
++
++
++def _send_udp6():
++    """Send one UDP packet from veth0 to veth1 over IPv6."""
++    with socket.socket(socket.AF_INET6, socket.SOCK_DGRAM) as s:
++        s.sendto(b"x", ("2001:db8::2", PORT))
++
++
++def _csum(data):
++    """Return the Internet checksum of data."""
++    data += b"\0" * (len(data) % 2)
++    return 0xffff - sum(struct.unpack(f"!{len(data) // 2}H", data)) % 0xffff
++
++
++def _ipv4_udp():
++    """Return an IPv4 UDP packet from veth0 to veth1."""
++    udp = struct.pack("!HHHH", PORT, PORT, 9, 0) + b"x"
++    iph = struct.pack("!BBHHHBBH4s4s", 0x45, 0, 20 + len(udp), 0, 0, 64,
++                      socket.IPPROTO_UDP, 0, socket.inet_aton("192.0.2.1"),
++                      socket.inet_aton("192.0.2.2"))
++    return iph[:10] + struct.pack("!H", _csum(iph)) + iph[12:] + udp
++
++
++def _ipv6_udp():
++    """Return an IPv6 UDP packet from veth0 to veth1."""
++    src = socket.inet_pton(socket.AF_INET6, "2001:db8::1")
++    dst = socket.inet_pton(socket.AF_INET6, "2001:db8::2")
++    udp = struct.pack("!HHHH", PORT, PORT, 9, 0) + b"x"
++    pseudo = src + dst + struct.pack("!IxxxB", len(udp), socket.IPPROTO_UDP)
++    udp = udp[:6] + struct.pack("!H", _csum(pseudo + udp)) + udp[8:]
++    return (struct.pack("!IHBB", 6 << 28, len(udp), socket.IPPROTO_UDP, 64) +
++            src + dst + udp)
++
++
++def _eth_frame():
++    """Return an Ethernet frame with _ipv4_udp() from veth0 to veth1."""
++    src = ip("link show dev veth0", json=True)[0]["address"]
++    dst = ip("neigh show 192.0.2.2 dev veth0", json=True)[0]["lladdr"]
++    return bytes.fromhex((dst + src).replace(":", "") + "0800") + _ipv4_udp()
++
++
++def _send_raw4():
++    """Send one UDP packet from veth0 to veth1 with an IPv4 raw socket."""
++    with socket.socket(socket.AF_INET, socket.SOCK_RAW,
++                       socket.IPPROTO_RAW) as s:
++        s.sendto(_ipv4_udp(), ("192.0.2.2", 0))
++
++
++def _send_raw6():
++    """Send one UDP packet from veth0 to veth1 with an IPv6 raw socket."""
++    with socket.socket(socket.AF_INET6, socket.SOCK_RAW,
++                       socket.IPPROTO_RAW) as s:
++        s.sendto(_ipv6_udp(), ("2001:db8::2", 0))
++
++
++def _send_packet():
++    """Send one UDP packet from veth0 to veth1 with an AF_PACKET socket."""
++    # With protocol 0 the socket receives nothing, so the skb is not cloned.
++    with socket.socket(socket.AF_PACKET, socket.SOCK_RAW) as s:
++        s.bind(("veth0", 0))
++        s.send(_eth_frame())
++
++
++def _send_xsk():
++    """Send one UDP packet from veth0 to veth1 with an AF_XDP socket."""
++    xdp = cmd(f"{XDP_HELPER} - -", fail=False)
++    if xdp.ret == 255:
++        raise KsftSkipEx("AF_XDP unsupported")
++    if xdp.ret > 0:
++        raise KsftFailEx("unable to create AF_XDP socket")
++    ifindex = socket.if_nametoindex("veth0")
++    cmd(f"{XDP_HELPER} {ifindex} 0 -t {_eth_frame().hex()}")
++
++
++@ksft_variants([
++    KsftNamedVariant("udp4", _send_udp4),
++    KsftNamedVariant("udp6", _send_udp6),
++    KsftNamedVariant("raw4", _send_raw4),
++    KsftNamedVariant("raw6", _send_raw6),
++    KsftNamedVariant("packet", _send_packet),
++    KsftNamedVariant("xsk", _send_xsk),
++])
++def test_peer_xdp(send) -> None:
++    """Check that generic XDP on the veth peer does not copy the skb.
++
++    Each sender allocates the skb in a different function.
++    """
++    with NetNS() as send_ns, NetNS() as peer_ns, NetNSEnter(str(send_ns)):
++        _setup_veth(peer_ns)
++        map_id = _load_progs()
++        _attach_xdp(peer_ns)
++        with NetNSEnter(str(peer_ns)):
++            _attach_tcx("veth1", "ingress", "record")
++        send()
++        ksft_busy_wait(lambda: _read_bss(map_id)["count"] == 1)
++        bss = _read_bss(map_id)
++
++    ksft_eq(bss["pp_recycle"], False, "generic XDP copied the skb")
++
++
++def test_peer_xdp_cloned() -> None:
++    """Check that pp_recycle is set when generic XDP copies a cloned skb."""
++    with NetNS() as send_ns, NetNS() as peer_ns, NetNSEnter(str(send_ns)):
++        _setup_veth(peer_ns)
++        map_id = _load_progs()
++        _attach_xdp(peer_ns)
++        with NetNSEnter(str(peer_ns)):
++            _attach_tcx("veth1", "ingress", "record")
++        # A packet socket for ETH_P_ALL holds a clone of the skb, so generic
++        # XDP copies it.
++        with socket.socket(socket.AF_PACKET, socket.SOCK_RAW,
++                           socket.htons(ETH_P_ALL)) as s:
++            s.bind(("veth0", 0))
++            _send_udp4()
++            ksft_busy_wait(lambda: _read_bss(map_id)["count"] == 1)
++        bss = _read_bss(map_id)
++
++    ksft_eq(bss["pp_recycle"], True, "generic XDP did not copy the skb")
++
++
++def test_peer_xdp_netkit() -> None:
++    """Check that generic XDP on the netkit peer does not copy the skb."""
++    with NetNS() as send_ns, NetNS() as peer_ns, NetNSEnter(str(send_ns)):
++        # L2 mode has MAC addresses and ARP, as on veth.
++        ip(f"link add nk0 type netkit mode l2 peer name nk1 netns {peer_ns}")
++        _setup_addrs(peer_ns, "nk0", "nk1")
++        map_id = _load_progs()
++        _attach_xdp(peer_ns, dev="nk1")
++        with NetNSEnter(str(peer_ns)):
++            _attach_tcx("nk1", "ingress", "record")
++        _send_udp4()
++        ksft_busy_wait(lambda: _read_bss(map_id)["count"] == 1)
++        bss = _read_bss(map_id)
++
++    ksft_eq(bss["pp_recycle"], False, "generic XDP copied the skb")
++
++
++@ksft_variants([
++    KsftNamedVariant("generic", "xdpgeneric"),
++    KsftNamedVariant("native", "xdpdrv"),
++])
++def test_detach(mode) -> None:
++    """Check that XDP on the veth peer sets tx_extra_headroom until detach."""
++    with NetNS() as send_ns, NetNS() as peer_ns, NetNSEnter(str(send_ns)):
++        _setup_veth(peer_ns)
++        map_id = _load_progs()
++        _attach_tcx("veth0", "egress", "record")
++        _attach_xdp(peer_ns, mode)
++        _send_udp4()
++        ksft_eq(_read_bss(map_id)["tx_extra_headroom"], XDP_PACKET_HEADROOM)
++        ip(f"link set dev veth1 {mode} off", ns=peer_ns)
++        _send_udp4()
++        ksft_eq(_read_bss(map_id)["tx_extra_headroom"], 0)
++
++
++def test_bond() -> None:
++    """Check that XDP that a bond propagates to the veth peer counts."""
++    with NetNS() as send_ns, NetNS() as peer_ns, NetNSEnter(str(send_ns)):
++        _setup_veth(peer_ns)
++        map_id = _load_progs()
++        _attach_tcx("veth0", "egress", "record")
++        ip("link add bond0 type bond mode balance-rr", ns=peer_ns)
++        # A bond only enslaves a device that is down.
++        ip("link set dev veth1 down", ns=peer_ns)
++        ip("link set dev veth1 master bond0", ns=peer_ns)
++        _attach_xdp(peer_ns, "xdpdrv", "bond0")
++        _send_udp4()
++        ksft_eq(_read_bss(map_id)["tx_extra_headroom"], XDP_PACKET_HEADROOM)
++        ip("link set dev bond0 xdpdrv off", ns=peer_ns)
++        _send_udp4()
++        ksft_eq(_read_bss(map_id)["tx_extra_headroom"], 0)
++
++
++def test_bridge_vxlan() -> None:
++    """Check that needed_headroom counts toward the headroom for XDP."""
++    with NetNS() as send_ns, NetNS() as peer_ns, NetNSEnter(str(send_ns)):
++        _setup_veth(peer_ns)
++        map_id = _load_progs()
++        _attach_tcx("veth0", "egress", "record")
++        ip("link add br0 type bridge", ns=peer_ns)
++        ip("link set dev veth1 master br0", ns=peer_ns)
++        # The bridge raises needed_headroom of veth1, and of veth0 with it.
++        ip("link add vxlan0 type vxlan id 1 dstport 4789", ns=peer_ns)
++        ip("link set dev vxlan0 master br0", ns=peer_ns)
++        # tx_extra_headroom is not recalculated when needed_headroom
++        # changes, so attach XDP after the vxlan port.
++        _attach_xdp(peer_ns)
++        _send_udp4()
++        bss = _read_bss(map_id)
++
++    ksft_gt(bss["needed_headroom"], 0,
++            "vxlan port did not raise needed_headroom")
++    ksft_eq(bss["needed_headroom"] + bss["tx_extra_headroom"],
++            XDP_PACKET_HEADROOM)
++
++
++def main() -> None:
++    """Run all test cases."""
++    ksft_run([test_peer_xdp,
++              test_peer_xdp_cloned,
++              test_peer_xdp_netkit,
++              test_detach,
++              test_bond,
++              test_bridge_vxlan])
++    ksft_exit()
++
++
++if __name__ == "__main__":
++    main()
+-- 
+2.56.0
+
+
+From 63a94be23d974cb1702d2f2533d3279bb739868b Mon Sep 17 00:00:00 2001
+From: Tianyi Gao <tianyi@cloudflare.com>
+Date: Thu, 12 Nov 2026 00:10:22 +0000
+Subject: [PATCH 06/11] bpf, tcx: Set tx_extra_headroom from a decl tag on
+ egress programs
+
+A program at TC egress can push headers, for example to encapsulate a
+packet. A locally generated packet gets only LL_RESERVED_SPACE() of
+headroom, so bpf_skb_adjust_room() reallocates every such packet.
+
+The kernel cannot know how many bytes a program pushes. Let the program
+declare it with a BTF decl tag on its main function:
+
+	SEC("tcx/egress")
+	__attribute__((btf_decl_tag("tx_extra_headroom:64")))
+	int prog(struct __sk_buff *skb)
+
+The verifier parses the tag when the program is loaded, as it does for
+"exception_callback:", and stores the value in struct bpf_prog_aux. The
+new field fills a hole after freplace_link_cnt, so struct bpf_prog_aux
+does not grow. The verifier rejects the program if the tag does not
+parse or exceeds NETDEV_TX_EXTRA_HEADROOM_MAX (512 bytes).
+tx_extra_headroom is then recalculated with
+netdev_update_tx_extra_headroom() under RTNL whenever an egress program
+is attached, detached or replaced.
+
+The egress programs of a device run one after another, so the headers
+that they push can add up. Their tags are summed and added to the
+headroom for XDP on the veth peer. The total is capped at
+NETDEV_TX_EXTRA_HEADROOM_MAX.
+
+Tags on programs at tcx ingress, on tail call targets and on freplace
+programs are ignored, like "exception_callback:" on subprogs. An ingress
+program does not see transmitted packets. A tail call target or a
+freplace program is never attached at tcx, so its tag is never added.
+The tag on the attached program covers the whole chain.
+
+Only tcx is supported. A cls_bpf filter is attached to a tc block,
+which can be shared by several devices.
+
+Suggested-by: Dragos Tatulea <dtatulea@nvidia.com>
+Signed-off-by: Tianyi Gao <tianyi@cloudflare.com>
+---
+v2:
+- New patch, replaces IFLA_TX_EXTRA_HEADROOM for the TC egress case
+  (Dragos, Willem, Stephen).
+---
+ Documentation/networking/netdevices.rst | 15 ++++++++++++
+ include/linux/bpf.h                     |  1 +
+ include/net/tcx.h                       |  6 +++++
+ kernel/bpf/tcx.c                        | 24 +++++++++++++++++++
+ kernel/bpf/verifier.c                   | 31 +++++++++++++++++++++++++
+ net/core/dev.c                          |  4 +++-
+ 6 files changed, 80 insertions(+), 1 deletion(-)
+
+diff --git a/Documentation/networking/netdevices.rst b/Documentation/networking/netdevices.rst
+index 53ca8439f73b..128a93303a6d 100644
+--- a/Documentation/networking/netdevices.rst
++++ b/Documentation/networking/netdevices.rst
+@@ -459,12 +459,27 @@ values:
+ 
+ * ``XDP_PACKET_HEADROOM`` (256 bytes) minus ``needed_headroom``, when the
+   peer of a veth or netkit device has an XDP program
++* the headroom that the programs at tcx egress of the device declare
+ 
+ When the peer has an XDP program, locally generated UDP, raw and
+ AF_PACKET packets and AF_XDP packets in copy mode have enough headroom
+ for it. ``tx_extra_headroom`` is not recalculated when a bridge or
+ openvswitch changes ``needed_headroom`` later.
+ 
++A program at tcx egress declares its headroom with a BTF decl tag on its
++main function. The value is a decimal number of bytes:
++
++.. code-block:: c
++
++  SEC("tcx/egress")
++  __attribute__((btf_decl_tag("tx_extra_headroom:64")))
++  int prog(struct __sk_buff *skb)
++
++The tag of the attached program covers the whole tail call chain. Tags on
++tail call targets, freplace programs and programs at tcx ingress are
++ignored. Loading a program whose tag is above 512 or does not parse fails
++with ``-EINVAL``.
++
+ NETDEV_INTERNAL symbol namespace
+ ================================
+ 
+diff --git a/include/linux/bpf.h b/include/linux/bpf.h
+index fdbf638300fc..bca6d0b960cb 100644
+--- a/include/linux/bpf.h
++++ b/include/linux/bpf.h
+@@ -1952,6 +1952,7 @@ struct bpf_prog_aux {
+ 	u64 (*bpf_exception_cb)(u64 cookie, u64 sp, u64 bp, u64, u64);
+ 	u16 stack_arg_sp_adjust;
+ 	u16 freplace_link_cnt; /* counts freplace links extending this prog */
++	u16 tx_extra_headroom; /* from the "tx_extra_headroom:" decl tag */
+ #ifdef CONFIG_SECURITY
+ 	void *security;
+ #endif
+diff --git a/include/net/tcx.h b/include/net/tcx.h
+index 23a61af13547..9ab299ecd902 100644
+--- a/include/net/tcx.h
++++ b/include/net/tcx.h
+@@ -164,6 +164,7 @@ int tcx_prog_attach(const union bpf_attr *attr, struct bpf_prog *prog);
+ int tcx_link_attach(const union bpf_attr *attr, struct bpf_prog *prog);
+ int tcx_prog_detach(const union bpf_attr *attr, struct bpf_prog *prog);
+ void tcx_uninstall(struct net_device *dev, bool ingress);
++unsigned int tcx_tx_extra_headroom(struct net_device *dev);
+ 
+ int tcx_prog_query(const union bpf_attr *attr,
+ 		   union bpf_attr __user *uattr);
+@@ -193,6 +194,11 @@ static inline int tcx_prog_detach(const union bpf_attr *attr,
+ 	return -EINVAL;
+ }
+ 
++static inline unsigned int tcx_tx_extra_headroom(struct net_device *dev)
++{
++	return 0;
++}
++
+ static inline int tcx_prog_query(const union bpf_attr *attr,
+ 				 union bpf_attr __user *uattr)
+ {
+diff --git a/kernel/bpf/tcx.c b/kernel/bpf/tcx.c
+index 02db0113b8e7..99da16e13981 100644
+--- a/kernel/bpf/tcx.c
++++ b/kernel/bpf/tcx.c
+@@ -46,6 +46,8 @@ int tcx_prog_attach(const union bpf_attr *attr, struct bpf_prog *prog)
+ 			tcx_skeys_inc(ingress);
+ 		}
+ 		bpf_mprog_commit(entry);
++		if (!ingress)
++			netdev_update_tx_extra_headroom(dev);
+ 	} else if (created) {
+ 		tcx_entry_free(entry);
+ 	}
+@@ -86,6 +88,8 @@ int tcx_prog_detach(const union bpf_attr *attr, struct bpf_prog *prog)
+ 		bpf_mprog_commit(entry);
+ 		if (!entry_new)
+ 			tcx_entry_free(entry);
++		if (!ingress)
++			netdev_update_tx_extra_headroom(dev);
+ 	}
+ out:
+ 	rtnl_unlock();
+@@ -119,6 +123,20 @@ void tcx_uninstall(struct net_device *dev, bool ingress)
+ 		tcx_entry_free(entry);
+ }
+ 
++unsigned int tcx_tx_extra_headroom(struct net_device *dev)
++{
++	struct bpf_mprog_entry *entry = tcx_entry_fetch(dev, false);
++	unsigned int headroom = 0;
++	struct bpf_mprog_fp *fp;
++	struct bpf_prog *prog;
++
++	if (!entry)
++		return 0;
++	bpf_mprog_foreach_prog(entry, fp, prog)
++		headroom += prog->aux->tx_extra_headroom;
++	return headroom;
++}
++
+ int tcx_prog_query(const union bpf_attr *attr, union bpf_attr __user *uattr)
+ {
+ 	bool ingress = attr->query.attach_type == BPF_TCX_INGRESS;
+@@ -160,6 +178,8 @@ static int tcx_link_prog_attach(struct bpf_link *link, u32 flags, u32 id_or_fd,
+ 			tcx_skeys_inc(ingress);
+ 		}
+ 		bpf_mprog_commit(entry);
++		if (!ingress)
++			netdev_update_tx_extra_headroom(dev);
+ 	} else if (created) {
+ 		tcx_entry_free(entry);
+ 	}
+@@ -193,6 +213,8 @@ static void tcx_link_release(struct bpf_link *link)
+ 		bpf_mprog_commit(entry);
+ 		if (!entry_new)
+ 			tcx_entry_free(entry);
++		if (!ingress)
++			netdev_update_tx_extra_headroom(dev);
+ 		tcx->dev = NULL;
+ 	}
+ out:
+@@ -237,6 +259,8 @@ static int tcx_link_update(struct bpf_link *link, struct bpf_prog *nprog,
+ 		oprog = xchg(&link->prog, nprog);
+ 		bpf_prog_put(oprog);
+ 		bpf_mprog_commit(entry);
++		if (!ingress)
++			netdev_update_tx_extra_headroom(dev);
+ 	}
+ out:
+ 	rtnl_unlock();
+diff --git a/kernel/bpf/verifier.c b/kernel/bpf/verifier.c
+index 5e4700fda66b..e241ee20927a 100644
+--- a/kernel/bpf/verifier.c
++++ b/kernel/bpf/verifier.c
+@@ -2683,6 +2683,33 @@ static int add_subprog(struct bpf_verifier_env *env, int off)
+ 	return i;
+ }
+ 
++static int bpf_find_tx_extra_headroom(struct bpf_verifier_env *env)
++{
++	struct bpf_prog_aux *aux = env->prog->aux;
++	const struct btf_type *t;
++	const char *value;
++	u16 headroom;
++
++	if (!aux->func_info_cnt)
++		return 0;
++	t = btf_type_by_id(aux->btf, aux->func_info[0].type_id);
++	value = btf_find_decl_tag_value(aux->btf, t, -1, "tx_extra_headroom:");
++	if (IS_ERR(value)) {
++		if (PTR_ERR(value) == -ENOENT)
++			return 0;
++		verbose(env,
++			"multiple tx_extra_headroom tags for main subprog\n");
++		return PTR_ERR(value);
++	}
++	if (!isdigit(*value) || kstrtou16(value, 10, &headroom) ||
++	    headroom > NETDEV_TX_EXTRA_HEADROOM_MAX) {
++		verbose(env, "invalid tx_extra_headroom tag '%s'\n", value);
++		return -EINVAL;
++	}
++	aux->tx_extra_headroom = headroom;
++	return 0;
++}
++
+ static int bpf_find_exception_callback_insn_off(struct bpf_verifier_env *env)
+ {
+ 	struct bpf_prog_aux *aux = env->prog->aux;
+@@ -3264,6 +3291,10 @@ static int add_subprogs(struct bpf_verifier_env *env)
+ 		}
+ 	}
+ 
++	ret = bpf_find_tx_extra_headroom(env);
++	if (ret < 0)
++		return ret;
++
+ 	ret = bpf_find_exception_callback_insn_off(env);
+ 	if (ret < 0)
+ 		return ret;
+diff --git a/net/core/dev.c b/net/core/dev.c
+index 6e053f612d72..6d11d5ad13e1 100644
+--- a/net/core/dev.c
++++ b/net/core/dev.c
+@@ -10687,8 +10687,10 @@ static void __netdev_update_tx_extra_headroom(struct net_device *dev,
+ 	if (peer && dev_xdp_prog_count(peer) &&
+ 	    needed_headroom < XDP_PACKET_HEADROOM)
+ 		tx_extra_headroom = XDP_PACKET_HEADROOM - needed_headroom;
++	tx_extra_headroom += tcx_tx_extra_headroom(dev);
+ 
+-	WRITE_ONCE(dev->tx_extra_headroom, tx_extra_headroom);
++	WRITE_ONCE(dev->tx_extra_headroom,
++		   min(tx_extra_headroom, NETDEV_TX_EXTRA_HEADROOM_MAX));
+ }
+ 
+ /**
+-- 
+2.56.0
+
+
+From 6d8e16e769ab86472b32ae0a5160c9ccb93d3c71 Mon Sep 17 00:00:00 2001
+From: Tianyi Gao <tianyi@cloudflare.com>
+Date: Thu, 12 Nov 2026 00:13:35 +0000
+Subject: [PATCH 07/11] selftests: net: tx_extra_headroom: test a push at TC
+ egress
+
+Add test cases for the "tx_extra_headroom:<bytes>" decl tag on tcx
+egress programs.
+
+The new programs in tx_extra_headroom.bpf.c push 20 or 30 bytes after
+the MAC header with bpf_skb_adjust_room() and record whether skb->head
+changed. A new skb->head means that pskb_expand_head() reallocated the
+packet. The record program from the previous patch runs first and
+records tx_extra_headroom. The cases check that:
+
+- a push without a tag reallocates and a push with a tag of 20 does not;
+- tx_extra_headroom is 20 with the tagged program and 0 after it is
+  detached;
+- with XDP on the peer, tx_extra_headroom is 256 + 20;
+- with tags of 20 and 30, tx_extra_headroom is 50 and neither push
+  reallocates;
+- with a tag of 512 and XDP on the peer, tx_extra_headroom is 512 and
+  not 256 + 512.
+
+The next patch tests the tags that the verifier rejects.
+
+Signed-off-by: Tianyi Gao <tianyi@cloudflare.com>
+---
+The push program follows
+tools/testing/selftests/bpf/progs/test_dst_clear.c.
+
+Replacing a program with BPF_F_REPLACE or BPF_LINK_UPDATE is not
+tested, because bpftool cannot do either.
+
+v2:
+- Built from v1 5/8. Attach with tcx and declare the headroom with
+  a decl tag, instead of a tc filter and IFLA_TX_EXTRA_HEADROOM.
+- Add the detach, peer XDP, two program and maximum cases.
+---
+ .../selftests/net/tx_extra_headroom.bpf.c     | 59 +++++++++++-
+ .../selftests/net/tx_extra_headroom.py        | 92 ++++++++++++++++++-
+ 2 files changed, 148 insertions(+), 3 deletions(-)
+
+diff --git a/tools/testing/selftests/net/tx_extra_headroom.bpf.c b/tools/testing/selftests/net/tx_extra_headroom.bpf.c
+index d80f4567873a..df6cf112af90 100644
+--- a/tools/testing/selftests/net/tx_extra_headroom.bpf.c
++++ b/tools/testing/selftests/net/tx_extra_headroom.bpf.c
+@@ -1,5 +1,5 @@
+ // SPDX-License-Identifier: GPL-2.0
+-/* Record the headroom fields of a test packet. */
++/* Record the headroom fields of a test packet and push headers onto it. */
+ #include <stdbool.h>
+ #include <linux/bpf.h>
+ #include <linux/if_ether.h>
+@@ -12,6 +12,8 @@
+ #include <bpf/bpf_helpers.h>
+ 
+ #define UDP_TEST_PORT 9999
++#define PUSH_LEN 20
++#define PUSH_MARK 0x1d
+ 
+ struct net_device {
+ 	unsigned short needed_headroom;
+@@ -20,6 +22,8 @@ struct net_device {
+ 
+ struct sk_buff {
+ 	struct net_device *dev;
++	unsigned char *head;
++	unsigned char *data;
+ 	__u8 pp_recycle:1;
+ } __attribute__((preserve_access_index));
+ 
+@@ -29,6 +33,9 @@ __u32 count;
+ __u32 needed_headroom;
+ __u32 tx_extra_headroom;
+ bool pp_recycle;
++__u32 pushes;
++__u32 headroom;
++bool reallocated;
+ 
+ static bool is_test_packet(struct __sk_buff *skb)
+ {
+@@ -78,4 +85,54 @@ int record(struct __sk_buff *skb)
+ 	return TCX_NEXT;
+ }
+ 
++static int push(struct __sk_buff *skb, int len)
++{
++	struct sk_buff *kskb;
++	unsigned char *head;
++
++	if (skb->mark != PUSH_MARK && !is_test_packet(skb))
++		return TCX_NEXT;
++
++	kskb = bpf_cast_to_kern_ctx(skb);
++	headroom = kskb->data - kskb->head;
++
++	/* pskb_expand_head() always allocates a new skb->head. */
++	head = kskb->head;
++	if (!bpf_skb_adjust_room(skb, len, BPF_ADJ_ROOM_MAC, 0))
++		pushes++;
++	if (kskb->head != head)
++		reallocated = true;
++
++	/* The next program cannot parse the packet after the push. */
++	skb->mark = PUSH_MARK;
++	return TCX_NEXT;
++}
++
++SEC("tcx/egress")
++int push_untagged(struct __sk_buff *skb)
++{
++	return push(skb, PUSH_LEN);
++}
++
++SEC("tcx/egress")
++__attribute__((btf_decl_tag("tx_extra_headroom:20")))
++int push_tagged(struct __sk_buff *skb)
++{
++	return push(skb, PUSH_LEN);
++}
++
++SEC("tcx/egress")
++__attribute__((btf_decl_tag("tx_extra_headroom:30")))
++int push_tagged_30(struct __sk_buff *skb)
++{
++	return push(skb, 30);
++}
++
++SEC("tcx/egress")
++__attribute__((btf_decl_tag("tx_extra_headroom:512")))
++int tag_max(struct __sk_buff *skb)
++{
++	return TCX_NEXT;
++}
++
+ char _license[] SEC("license") = "GPL";
+diff --git a/tools/testing/selftests/net/tx_extra_headroom.py b/tools/testing/selftests/net/tx_extra_headroom.py
+index 4058d0e64fc5..122a1a1b5ca9 100755
+--- a/tools/testing/selftests/net/tx_extra_headroom.py
++++ b/tools/testing/selftests/net/tx_extra_headroom.py
+@@ -7,7 +7,7 @@ import socket
+ import struct
+ from pathlib import Path
+ 
+-from lib.py import ksft_run, ksft_exit, ksft_eq, ksft_gt
++from lib.py import ksft_run, ksft_exit, ksft_eq, ksft_ge, ksft_gt
+ from lib.py import KsftSkipEx, KsftFailEx
+ from lib.py import ksft_busy_wait, ksft_variants, KsftNamedVariant
+ from lib.py import cmd, defer, ip, bpftool, bpf_prog_map_ids
+@@ -18,8 +18,10 @@ XDP_OBJ = Path(__file__).parent / "lib/xdp_dummy.bpf.o"
+ XDP_HELPER = Path(__file__).parent / "lib/xdp_helper"
+ PIN_DIR = Path("/sys/fs/bpf/tx_extra_headroom")
+ PORT = 9999  # UDP_TEST_PORT in tx_extra_headroom.bpf.c
++PUSH_LEN = 20  # PUSH_LEN in tx_extra_headroom.bpf.c
+ ETH_P_ALL = 0x0003
+ XDP_PACKET_HEADROOM = 256
++TX_EXTRA_HEADROOM_MAX = 512  # NETDEV_TX_EXTRA_HEADROOM_MAX
+ 
+ 
+ def _setup_addrs(peer_ns, dev, peer):
+@@ -270,6 +272,87 @@ def test_bridge_vxlan() -> None:
+             XDP_PACKET_HEADROOM)
+ 
+ 
++@ksft_variants([
++    KsftNamedVariant("untagged", "push_untagged", 0, True),
++    KsftNamedVariant("tagged", "push_tagged", PUSH_LEN, False),
++])
++def test_push(prog, tx_extra_headroom, reallocated) -> None:
++    """Check that the tag of a tcx program avoids a reallocation."""
++    with NetNS() as send_ns, NetNS() as peer_ns, NetNSEnter(str(send_ns)):
++        _setup_veth(peer_ns)
++        map_id = _load_progs()
++        _attach_tcx("veth0", "egress", "record")
++        _attach_tcx("veth0", "egress", prog)
++        _send_udp4()
++        bss = _read_bss(map_id)
++
++    ksft_eq(bss["pushes"], 1)
++    ksft_eq(bss["tx_extra_headroom"], tx_extra_headroom)
++    ksft_eq(bss["reallocated"], reallocated)
++
++
++def test_push_detach() -> None:
++    """Check that detaching the tagged program clears tx_extra_headroom."""
++    with NetNS() as send_ns, NetNS() as peer_ns, NetNSEnter(str(send_ns)):
++        _setup_veth(peer_ns)
++        map_id = _load_progs()
++        _attach_tcx("veth0", "egress", "record")
++        _attach_tcx("veth0", "egress", "push_tagged")
++        _send_udp4()
++        ksft_eq(_read_bss(map_id)["tx_extra_headroom"], PUSH_LEN)
++        # Without a program argument, bpftool detaches the last program.
++        bpftool("net detach tcx_egress dev veth0")
++        _send_udp4()
++        ksft_eq(_read_bss(map_id)["tx_extra_headroom"], 0)
++
++
++def test_push_peer_xdp() -> None:
++    """Check that the tag adds to the headroom for XDP on the peer."""
++    with NetNS() as send_ns, NetNS() as peer_ns, NetNSEnter(str(send_ns)):
++        _setup_veth(peer_ns)
++        map_id = _load_progs()
++        _attach_tcx("veth0", "egress", "record")
++        _attach_tcx("veth0", "egress", "push_tagged")
++        _attach_xdp(peer_ns)
++        _send_udp4()
++        bss = _read_bss(map_id)
++
++    ksft_eq(bss["pushes"], 1)
++    ksft_eq(bss["tx_extra_headroom"], XDP_PACKET_HEADROOM + PUSH_LEN)
++    ksft_ge(bss["headroom"] - PUSH_LEN, XDP_PACKET_HEADROOM,
++            "headroom left for XDP after the push")
++
++
++def test_push_two_progs() -> None:
++    """Check that the tags of two tcx programs add up."""
++    with NetNS() as send_ns, NetNS() as peer_ns, NetNSEnter(str(send_ns)):
++        _setup_veth(peer_ns)
++        map_id = _load_progs()
++        _attach_tcx("veth0", "egress", "record")
++        _attach_tcx("veth0", "egress", "push_tagged")
++        _attach_tcx("veth0", "egress", "push_tagged_30")
++        _send_udp4()
++        bss = _read_bss(map_id)
++
++    ksft_eq(bss["pushes"], 2)
++    ksft_eq(bss["tx_extra_headroom"], PUSH_LEN + 30)
++    ksft_eq(bss["reallocated"], False, "a push reallocated the head")
++
++
++def test_tag_max() -> None:
++    """Check that the maximum tag is accepted and that the sum is capped."""
++    with NetNS() as send_ns, NetNS() as peer_ns, NetNSEnter(str(send_ns)):
++        _setup_veth(peer_ns)
++        map_id = _load_progs()
++        _attach_tcx("veth0", "egress", "record")
++        _attach_tcx("veth0", "egress", "tag_max")
++        _attach_xdp(peer_ns)
++        _send_udp4()
++        bss = _read_bss(map_id)
++
++    ksft_eq(bss["tx_extra_headroom"], TX_EXTRA_HEADROOM_MAX)
++
++
+ def main() -> None:
+     """Run all test cases."""
+     ksft_run([test_peer_xdp,
+@@ -277,7 +360,12 @@ def main() -> None:
+               test_peer_xdp_netkit,
+               test_detach,
+               test_bond,
+-              test_bridge_vxlan])
++              test_bridge_vxlan,
++              test_push,
++              test_push_detach,
++              test_push_peer_xdp,
++              test_push_two_progs,
++              test_tag_max])
+     ksft_exit()
+ 
+ 
+-- 
+2.56.0
+
+
+From 33d78505659b16222f5a22d0a655d90578602548 Mon Sep 17 00:00:00 2001
+From: Tianyi Gao <tianyi@cloudflare.com>
+Date: Wed, 18 Nov 2026 22:18:18 +0000
+Subject: [PATCH 08/11] selftests/bpf: Test the tx_extra_headroom decl tag
+
+Check that the verifier accepts a "tx_extra_headroom:" tag of
+NETDEV_TX_EXTRA_HEADROOM_MAX (512 bytes), and rejects a tag above it, a
+tag with a plus sign and two tags on the same program.
+
+Signed-off-by: Tianyi Gao <tianyi@cloudflare.com>
+---
+v2:
+- New patch.
+---
+ .../selftests/bpf/prog_tests/verifier.c       |  2 +
+ .../bpf/progs/verifier_tx_extra_headroom.c    | 40 +++++++++++++++++++
+ 2 files changed, 42 insertions(+)
+ create mode 100644 tools/testing/selftests/bpf/progs/verifier_tx_extra_headroom.c
+
+diff --git a/tools/testing/selftests/bpf/prog_tests/verifier.c b/tools/testing/selftests/bpf/prog_tests/verifier.c
+index 6a494c381266..e3ef97ed092a 100644
+--- a/tools/testing/selftests/bpf/prog_tests/verifier.c
++++ b/tools/testing/selftests/bpf/prog_tests/verifier.c
+@@ -126,6 +126,7 @@
+ #include "verifier_subreg.skel.h"
+ #include "verifier_tailcall.skel.h"
+ #include "verifier_tailcall_jit.skel.h"
++#include "verifier_tx_extra_headroom.skel.h"
+ #include "verifier_typedef.skel.h"
+ #include "verifier_uninit.skel.h"
+ #include "verifier_unpriv.skel.h"
+@@ -316,6 +317,7 @@ void test_verifier_subprog_topo(void)        { RUN(verifier_subprog_topo); }
+ void test_verifier_subreg(void)               { RUN(verifier_subreg); }
+ void test_verifier_tailcall(void)             { RUN(verifier_tailcall); }
+ void test_verifier_tailcall_jit(void)         { RUN(verifier_tailcall_jit); }
++void test_verifier_tx_extra_headroom(void)    { RUN(verifier_tx_extra_headroom); }
+ void test_verifier_typedef(void)              { RUN(verifier_typedef); }
+ void test_verifier_uninit(void)               { RUN(verifier_uninit); }
+ void test_verifier_unpriv(void)               { RUN(verifier_unpriv); }
+diff --git a/tools/testing/selftests/bpf/progs/verifier_tx_extra_headroom.c b/tools/testing/selftests/bpf/progs/verifier_tx_extra_headroom.c
+new file mode 100644
+index 000000000000..f15963e34434
+--- /dev/null
++++ b/tools/testing/selftests/bpf/progs/verifier_tx_extra_headroom.c
+@@ -0,0 +1,40 @@
++// SPDX-License-Identifier: GPL-2.0
++
++#include <linux/bpf.h>
++#include <bpf/bpf_helpers.h>
++#include "bpf_misc.h"
++
++SEC("tc")
++__attribute__((btf_decl_tag("tx_extra_headroom:512")))
++__success
++int tag_max(struct __sk_buff *skb)
++{
++	return 0;
++}
++
++SEC("tc")
++__attribute__((btf_decl_tag("tx_extra_headroom:513")))
++__failure __msg("invalid tx_extra_headroom tag '513'")
++int tag_above_max(struct __sk_buff *skb)
++{
++	return 0;
++}
++
++SEC("tc")
++__attribute__((btf_decl_tag("tx_extra_headroom:+20")))
++__failure __msg("invalid tx_extra_headroom tag '+20'")
++int tag_plus_sign(struct __sk_buff *skb)
++{
++	return 0;
++}
++
++SEC("tc")
++__attribute__((btf_decl_tag("tx_extra_headroom:20")))
++__attribute__((btf_decl_tag("tx_extra_headroom:30")))
++__failure __msg("multiple tx_extra_headroom tags for main subprog")
++int tag_twice(struct __sk_buff *skb)
++{
++	return 0;
++}
++
++char _license[] SEC("license") = "GPL";
+-- 
+2.56.0
+
+
+From 55834d3c3c0c23a9f18c346fe68c78b9fccefed4 Mon Sep 17 00:00:00 2001
+From: Tianyi Gao <tianyi@cloudflare.com>
+Date: Thu, 12 Nov 2026 00:16:02 +0000
+Subject: [PATCH 09/11] veth: add VETH_INFO_TX_EXTRA_HEADROOM
+
+Packets that a namespace sends through a veth pair can be encapsulated
+on another device, for example by a program at TC egress of the host
+uplink. The veth device cannot see this, so the packets are reallocated
+on the uplink.
+
+Add VETH_INFO_TX_EXTRA_HEADROOM, so that the CNI plugin can set the
+headroom for both devices when it creates the pair. It cannot be changed
+later, like IFLA_NETKIT_HEADROOM.
+
+Store the value in struct veth_priv, and add ndo_get_tx_extra_headroom
+so that the core reads it whenever it recalculates tx_extra_headroom.
+The value cannot be written to tx_extra_headroom itself, because the
+core recalculates tx_extra_headroom from scratch when XDP on the peer
+or a program at tcx egress is attached or detached. A new field in
+struct net_device would also work, but it would grow struct net_device.
+
+IFLA_NETKIT_HEADROOM, added by commit b9ed315d3c4c ("netkit: Allow for
+configuring needed_{head,tail}room"), is similar but differs in two
+ways:
+
+- it is the total headroom of the device and sets needed_headroom;
+- it is a u16. The new attribute is a uint, as commit 374d345d9b5e
+  ("netlink: add variable-length / auto integers") recommends.
+
+Signed-off-by: Tianyi Gao <tianyi@cloudflare.com>
+---
+The iproute2 patch for VETH_INFO_TX_EXTRA_HEADROOM will be posted after
+this series is accepted.
+
+v2:
+- New patch, replaces IFLA_TX_EXTRA_HEADROOM for headers pushed on
+  another device (Willem, Stephen).
+---
+ Documentation/networking/netdevices.rst |  5 +++
+ drivers/net/veth.c                      | 44 +++++++++++++++++++++++++
+ include/linux/netdevice.h               |  5 +++
+ include/uapi/linux/veth.h               |  1 +
+ net/core/dev.c                          |  3 ++
+ 5 files changed, 58 insertions(+)
+
+diff --git a/Documentation/networking/netdevices.rst b/Documentation/networking/netdevices.rst
+index 128a93303a6d..cf7b84897f61 100644
+--- a/Documentation/networking/netdevices.rst
++++ b/Documentation/networking/netdevices.rst
+@@ -460,6 +460,7 @@ values:
+ * ``XDP_PACKET_HEADROOM`` (256 bytes) minus ``needed_headroom``, when the
+   peer of a veth or netkit device has an XDP program
+ * the headroom that the programs at tcx egress of the device declare
++* ``VETH_INFO_TX_EXTRA_HEADROOM`` of a veth device
+ 
+ When the peer has an XDP program, locally generated UDP, raw and
+ AF_PACKET packets and AF_XDP packets in copy mode have enough headroom
+@@ -480,6 +481,10 @@ tail call targets, freplace programs and programs at tcx ingress are
+ ignored. Loading a program whose tag is above 512 or does not parse fails
+ with ``-EINVAL``.
+ 
++``VETH_INFO_TX_EXTRA_HEADROOM`` is for headers that are pushed on another
++device, for example at TC egress of the uplink. It is set for both
++devices of a veth pair when the pair is created.
++
+ NETDEV_INTERNAL symbol namespace
+ ================================
+ 
+diff --git a/drivers/net/veth.c b/drivers/net/veth.c
+index 0539b3661793..06f691568f3a 100644
+--- a/drivers/net/veth.c
++++ b/drivers/net/veth.c
+@@ -77,6 +77,7 @@ struct veth_priv {
+ 	struct bpf_prog		*_xdp_prog;
+ 	struct veth_rq		*rq;
+ 	unsigned int		requested_headroom;
++	unsigned int		tx_extra_headroom;
+ 	netdevice_tracker	peer_tracker;
+ };
+ 
+@@ -1580,6 +1581,13 @@ static void veth_set_rx_headroom(struct net_device *dev, int new_hr)
+ 	rcu_read_unlock();
+ }
+ 
++static unsigned int veth_get_tx_extra_headroom(const struct net_device *dev)
++{
++	const struct veth_priv *priv = netdev_priv(dev);
++
++	return priv->tx_extra_headroom;
++}
++
+ static int veth_xdp_set(struct net_device *dev, struct bpf_prog *prog,
+ 			struct netlink_ext_ack *extack)
+ {
+@@ -1731,6 +1739,7 @@ static const struct net_device_ops veth_netdev_ops = {
+ 	.ndo_set_features	= veth_set_features,
+ 	.ndo_features_check	= passthru_features_check,
+ 	.ndo_set_rx_headroom	= veth_set_rx_headroom,
++	.ndo_get_tx_extra_headroom = veth_get_tx_extra_headroom,
+ 	.ndo_bpf		= veth_xdp,
+ 	.ndo_xdp_xmit		= veth_ndo_xdp_xmit,
+ 	.ndo_get_peer_dev	= veth_peer_dev,
+@@ -1832,6 +1841,7 @@ static int veth_newlink(struct net_device *dev,
+ 	struct net *peer_net = rtnl_newlink_peer_net(params);
+ 	struct nlattr **data = params->data;
+ 	struct nlattr **tb = params->tb;
++	unsigned int tx_extra_headroom = 0;
+ 	int err;
+ 	struct net_device *peer;
+ 	struct veth_priv *priv;
+@@ -1854,6 +1864,10 @@ static int veth_newlink(struct net_device *dev,
+ 		tbp = tb;
+ 	}
+ 
++	if (data && data[VETH_INFO_TX_EXTRA_HEADROOM])
++		tx_extra_headroom =
++			nla_get_uint(data[VETH_INFO_TX_EXTRA_HEADROOM]);
++
+ 	if (ifmp && tbp[IFLA_IFNAME]) {
+ 		nla_strscpy(ifname, tbp[IFLA_IFNAME], IFNAMSIZ);
+ 		name_assign_type = NET_NAME_USER;
+@@ -1875,6 +1889,9 @@ static int veth_newlink(struct net_device *dev,
+ 
+ 	netif_inherit_tso_max(peer, dev);
+ 
++	priv = netdev_priv(peer);
++	priv->tx_extra_headroom = tx_extra_headroom;
++
+ 	err = veth_init_queues(peer, tbp);
+ 	if (err)
+ 		goto err_register_peer;
+@@ -1908,6 +1925,9 @@ static int veth_newlink(struct net_device *dev,
+ 	else
+ 		snprintf(dev->name, IFNAMSIZ, DRV_NAME "%%d");
+ 
++	priv = netdev_priv(dev);
++	priv->tx_extra_headroom = tx_extra_headroom;
++
+ 	err = veth_init_queues(dev, tb);
+ 	if (err)
+ 		goto err_register_dev;
+@@ -1930,6 +1950,8 @@ static int veth_newlink(struct net_device *dev,
+ 	rcu_assign_pointer(priv->peer, dev);
+ 	netdev_hold(dev, &priv->peer_tracker, GFP_KERNEL);
+ 
++	netdev_update_tx_extra_headroom(dev);
++
+ 	veth_disable_gro(dev);
+ 	/* update XDP supported features */
+ 	veth_set_xdp_features(dev);
+@@ -1972,9 +1994,29 @@ static void veth_dellink(struct net_device *dev, struct list_head *head)
+ }
+ 
+ static const struct nla_policy veth_policy[VETH_INFO_MAX + 1] = {
++	[VETH_INFO_UNSPEC]	= { .strict_start_type =
++				  VETH_INFO_TX_EXTRA_HEADROOM },
+ 	[VETH_INFO_PEER]	= { .len = sizeof(struct ifinfomsg) },
++	[VETH_INFO_TX_EXTRA_HEADROOM] =
++		NLA_POLICY_MAX(NLA_UINT, NETDEV_TX_EXTRA_HEADROOM_MAX),
+ };
+ 
++static size_t veth_get_size(const struct net_device *dev)
++{
++	return nla_total_size(sizeof(u64)); /* VETH_INFO_TX_EXTRA_HEADROOM */
++}
++
++static int veth_fill_info(struct sk_buff *skb, const struct net_device *dev)
++{
++	const struct veth_priv *priv = netdev_priv(dev);
++
++	if (nla_put_uint(skb, VETH_INFO_TX_EXTRA_HEADROOM,
++			 priv->tx_extra_headroom))
++		return -EMSGSIZE;
++
++	return 0;
++}
++
+ static struct net *veth_get_link_net(const struct net_device *dev)
+ {
+ 	struct veth_priv *priv = netdev_priv(dev);
+@@ -2003,6 +2045,8 @@ static struct rtnl_link_ops veth_link_ops = {
+ 	.policy		= veth_policy,
+ 	.peer_type	= VETH_INFO_PEER,
+ 	.maxtype	= VETH_INFO_MAX,
++	.get_size	= veth_get_size,
++	.fill_info	= veth_fill_info,
+ 	.get_link_net	= veth_get_link_net,
+ 	.get_num_tx_queues	= veth_get_num_queues,
+ 	.get_num_rx_queues	= veth_get_num_queues,
+diff --git a/include/linux/netdevice.h b/include/linux/netdevice.h
+index 786b63f21d4f..b99e3afc89ce 100644
+--- a/include/linux/netdevice.h
++++ b/include/linux/netdevice.h
+@@ -1416,6 +1416,9 @@ struct netdev_net_notifier {
+  *	appropriate rx headroom value allows avoiding skb head copy on
+  *	forward. Setting a negative value resets the rx headroom to the
+  *	default value.
++ * unsigned int (*ndo_get_tx_extra_headroom)(const struct net_device *dev);
++ *	Return the headroom that the device adds to tx_extra_headroom.
++ *	The caller must hold RTNL and be under RCU read context.
+  * int (*ndo_bpf)(struct net_device *dev, struct netdev_bpf *bpf);
+  *	This function is used to set or query state related to XDP on the
+  *	netdevice and manage BPF offload. See definition of
+@@ -1688,6 +1691,8 @@ struct net_device_ops {
+ 						       struct sk_buff *skb);
+ 	void			(*ndo_set_rx_headroom)(struct net_device *dev,
+ 						       int needed_headroom);
++	unsigned int		(*ndo_get_tx_extra_headroom)(
++					const struct net_device *dev);
+ 	int			(*ndo_bpf)(struct net_device *dev,
+ 					   struct netdev_bpf *bpf);
+ 	int			(*ndo_xdp_xmit)(struct net_device *dev, int n,
+diff --git a/include/uapi/linux/veth.h b/include/uapi/linux/veth.h
+index 52b58e587e23..04cb408e5b3a 100644
+--- a/include/uapi/linux/veth.h
++++ b/include/uapi/linux/veth.h
+@@ -5,6 +5,7 @@
+ enum {
+ 	VETH_INFO_UNSPEC,
+ 	VETH_INFO_PEER,
++	VETH_INFO_TX_EXTRA_HEADROOM,
+ 
+ 	__VETH_INFO_MAX
+ #define VETH_INFO_MAX	(__VETH_INFO_MAX - 1)
+diff --git a/net/core/dev.c b/net/core/dev.c
+index 6d11d5ad13e1..6c655b0a949e 100644
+--- a/net/core/dev.c
++++ b/net/core/dev.c
+@@ -10688,6 +10688,9 @@ static void __netdev_update_tx_extra_headroom(struct net_device *dev,
+ 	    needed_headroom < XDP_PACKET_HEADROOM)
+ 		tx_extra_headroom = XDP_PACKET_HEADROOM - needed_headroom;
+ 	tx_extra_headroom += tcx_tx_extra_headroom(dev);
++	if (dev->netdev_ops->ndo_get_tx_extra_headroom)
++		tx_extra_headroom +=
++			dev->netdev_ops->ndo_get_tx_extra_headroom(dev);
+ 
+ 	WRITE_ONCE(dev->tx_extra_headroom,
+ 		   min(tx_extra_headroom, NETDEV_TX_EXTRA_HEADROOM_MAX));
+-- 
+2.56.0
+
+
+From 49e5d3662c38e493dd2659b405aa0240d415f5bb Mon Sep 17 00:00:00 2001
+From: Tianyi Gao <tianyi@cloudflare.com>
+Date: Thu, 12 Nov 2026 00:16:02 +0000
+Subject: [PATCH 10/11] netlink: specs: rt-link: add veth attributes
+
+Describe the veth attributes in rt-link.yaml, so that YNL can set and
+read them. The next patch uses them to test VETH_INFO_TX_EXTRA_HEADROOM.
+
+YNL includes linux/veth.h from the source tree with get_hdr_inc, which
+needs the source header guard to differ from the installed one. Prefix
+the guard with _UAPI, as commit 8066e388be48 ("net: add UAPI to the
+header guard in various network headers") did for other network
+headers. headers_install strips the prefix, so the installed header does
+not change.
+
+Signed-off-by: Tianyi Gao <tianyi@cloudflare.com>
+---
+v2:
+- New patch.
+---
+ Documentation/netlink/specs/rt-link.yaml | 14 ++++++++++++++
+ include/uapi/linux/veth.h                |  4 ++--
+ tools/net/ynl/Makefile.deps              |  3 ++-
+ 3 files changed, 18 insertions(+), 3 deletions(-)
+
+diff --git a/Documentation/netlink/specs/rt-link.yaml b/Documentation/netlink/specs/rt-link.yaml
+index 81b58633911d..36dece251778 100644
+--- a/Documentation/netlink/specs/rt-link.yaml
++++ b/Documentation/netlink/specs/rt-link.yaml
+@@ -2368,6 +2368,17 @@ attribute-sets:
+         name: mode
+         type: u8
+         enum: ovpn-mode
++  -
++    name: linkinfo-veth-attrs
++    name-prefix: veth-info-
++    header: linux/veth.h
++    attributes:
++      -
++        name: peer
++        type: binary
++      -
++        name: tx-extra-headroom
++        type: uint
+ 
+ sub-messages:
+   -
+@@ -2427,6 +2438,9 @@ sub-messages:
+       -
+         value: ovpn
+         attribute-set: linkinfo-ovpn-attrs
++      -
++        value: veth
++        attribute-set: linkinfo-veth-attrs
+   -
+     name: linkinfo-member-data-msg
+     formats:
+diff --git a/include/uapi/linux/veth.h b/include/uapi/linux/veth.h
+index 04cb408e5b3a..d22a29b1bbb2 100644
+--- a/include/uapi/linux/veth.h
++++ b/include/uapi/linux/veth.h
+@@ -1,6 +1,6 @@
+ /* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
+-#ifndef __NET_VETH_H_
+-#define __NET_VETH_H_
++#ifndef _UAPI__NET_VETH_H_
++#define _UAPI__NET_VETH_H_
+ 
+ enum {
+ 	VETH_INFO_UNSPEC,
+diff --git a/tools/net/ynl/Makefile.deps b/tools/net/ynl/Makefile.deps
+index f8850444d240..39abd83c014f 100644
+--- a/tools/net/ynl/Makefile.deps
++++ b/tools/net/ynl/Makefile.deps
+@@ -43,7 +43,8 @@ CFLAGS_psp:=$(call get_hdr_inc,_LINUX_PSP_H,psp.h)
+ CFLAGS_rt-addr:=$(call get_hdr_inc,__LINUX_RTNETLINK_H,rtnetlink.h) \
+ 	$(call get_hdr_inc,__LINUX_IF_ADDR_H,if_addr.h)
+ CFLAGS_rt-link:=$(call get_hdr_inc,__LINUX_RTNETLINK_H,rtnetlink.h) \
+-	$(call get_hdr_inc,_LINUX_IF_LINK_H,if_link.h)
++	$(call get_hdr_inc,_LINUX_IF_LINK_H,if_link.h) \
++	$(call get_hdr_inc,__NET_VETH_H_,veth.h)
+ CFLAGS_rt-neigh:=$(call get_hdr_inc,__LINUX_RTNETLINK_H,rtnetlink.h) \
+ 	$(call get_hdr_inc,__LINUX_NEIGHBOUR_H,neighbour.h)
+ CFLAGS_rt-nexthop:=$(call get_hdr_inc,__LINUX_RTNETLINK_H,rtnetlink.h) \
+-- 
+2.56.0
+
+
+From 7da4109757da614d20079c190cc15ba89893e301 Mon Sep 17 00:00:00 2001
+From: Tianyi Gao <tianyi@cloudflare.com>
+Date: Thu, 12 Nov 2026 00:17:04 +0000
+Subject: [PATCH 11/11] selftests: net: tx_extra_headroom: test the veth
+ attribute
+
+Create a veth pair with VETH_INFO_TX_EXTRA_HEADROOM set to 64 bytes
+through YNL and move the peer to another netns. Check that both ends
+report 64, and that tx_extra_headroom of the sending end is 64. With XDP
+on the peer it is 64 + 256, because the two values are added. Also check
+that a value above 512 is rejected.
+
+The helpers leave the RtnlFamily socket to garbage collection, as
+link_netns.py does.
+
+Signed-off-by: Tianyi Gao <tianyi@cloudflare.com>
+---
+v2:
+- Test VETH_INFO_TX_EXTRA_HEADROOM with YNL only (Jakub). The IFLA
+  tests of v1 4/8 are gone, so the patch no longer carries
+  David Keogh's sign-off.
+- Drop the VLAN case of v1 4/8. In v2 no code copies
+  tx_extra_headroom to a stacked device.
+---
+ .../selftests/net/tx_extra_headroom.py        | 61 +++++++++++++++++--
+ 1 file changed, 57 insertions(+), 4 deletions(-)
+
+diff --git a/tools/testing/selftests/net/tx_extra_headroom.py b/tools/testing/selftests/net/tx_extra_headroom.py
+index 122a1a1b5ca9..a4e4195179fa 100755
+--- a/tools/testing/selftests/net/tx_extra_headroom.py
++++ b/tools/testing/selftests/net/tx_extra_headroom.py
+@@ -3,15 +3,17 @@
+ 
+ """Tests for tx_extra_headroom."""
+ 
++import errno
+ import socket
+ import struct
+ from pathlib import Path
+ 
+-from lib.py import ksft_run, ksft_exit, ksft_eq, ksft_ge, ksft_gt
++from lib.py import ksft_run, ksft_exit, ksft_eq, ksft_ge, ksft_gt, ksft_raises
+ from lib.py import KsftSkipEx, KsftFailEx
+ from lib.py import ksft_busy_wait, ksft_variants, KsftNamedVariant
+ from lib.py import cmd, defer, ip, bpftool, bpf_prog_map_ids
+ from lib.py import NetNS, NetNSEnter
++from lib.py import Netlink, NlError, RtnlFamily
+ 
+ BPF_OBJ = Path(__file__).parent / "tx_extra_headroom.bpf.o"
+ XDP_OBJ = Path(__file__).parent / "lib/xdp_dummy.bpf.o"
+@@ -37,9 +39,34 @@ def _setup_addrs(peer_ns, dev, peer):
+         ip(f"neigh replace {addr} lladdr {peer_mac} dev {dev} nud permanent")
+ 
+ 
+-def _setup_veth(peer_ns):
++def _add_veth(tx_extra_headroom):
++    """Create veth0 and veth1 with VETH_INFO_TX_EXTRA_HEADROOM through YNL."""
++    # Without names, the peer is created first and becomes veth0.
++    rtnl = RtnlFamily()
++    rtnl.newlink(
++        {
++            "linkinfo": {
++                "kind": "veth",
++                "data": {"tx-extra-headroom": tx_extra_headroom},
++            },
++        },
++        flags=[Netlink.NLM_F_CREATE, Netlink.NLM_F_EXCL],
++    )
++
++
++def _veth_tx_extra_headroom(name):
++    """Return VETH_INFO_TX_EXTRA_HEADROOM of veth device name."""
++    rtnl = RtnlFamily()
++    link = rtnl.getlink({"ifname": name})
++    return link["linkinfo"]["data"]["tx-extra-headroom"]
++
++
++def _setup_veth(peer_ns, tx_extra_headroom=None):
+     """Create veth0 in the current netns and its peer veth1 in peer_ns."""
+-    ip("link add veth0 type veth peer name veth1")
++    if tx_extra_headroom is None:
++        ip("link add veth0 type veth peer name veth1")
++    else:
++        _add_veth(tx_extra_headroom)
+     ip(f"link set veth1 netns {peer_ns}")
+     _setup_addrs(peer_ns, "veth0", "veth1")
+ 
+@@ -353,6 +380,30 @@ def test_tag_max() -> None:
+     ksft_eq(bss["tx_extra_headroom"], TX_EXTRA_HEADROOM_MAX)
+ 
+ 
++def test_veth_info() -> None:
++    """Check that VETH_INFO_TX_EXTRA_HEADROOM adds to tx_extra_headroom."""
++    with NetNS() as send_ns, NetNS() as peer_ns, NetNSEnter(str(send_ns)):
++        _setup_veth(peer_ns, tx_extra_headroom=64)
++        ksft_eq(_veth_tx_extra_headroom("veth0"), 64)
++        with NetNSEnter(str(peer_ns)):
++            ksft_eq(_veth_tx_extra_headroom("veth1"), 64)
++        map_id = _load_progs()
++        _attach_tcx("veth0", "egress", "record")
++        _send_udp4()
++        ksft_eq(_read_bss(map_id)["tx_extra_headroom"], 64)
++        _attach_xdp(peer_ns)
++        _send_udp4()
++        ksft_eq(_read_bss(map_id)["tx_extra_headroom"],
++                64 + XDP_PACKET_HEADROOM)
++
++
++def test_veth_info_above_max() -> None:
++    """Check that a value above the maximum is rejected."""
++    with NetNS() as ns, NetNSEnter(str(ns)), ksft_raises(NlError) as cm:
++        _add_veth(TX_EXTRA_HEADROOM_MAX + 1)
++    ksft_eq(cm.exception.error, errno.ERANGE)
++
++
+ def main() -> None:
+     """Run all test cases."""
+     ksft_run([test_peer_xdp,
+@@ -365,7 +416,9 @@ def main() -> None:
+               test_push_detach,
+               test_push_peer_xdp,
+               test_push_two_progs,
+-              test_tag_max])
++              test_tag_max,
++              test_veth_info,
++              test_veth_info_above_max])
+     ksft_exit()
+ 
+ 
+-- 
+2.56.0
+

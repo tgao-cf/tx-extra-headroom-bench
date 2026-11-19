@@ -1,0 +1,4 @@
+Running... ctrl^C to stop
+Device: ens1f1np1@2
+Result: OK: 44673949(c44637605+d36343) usec, 49979104 (1442byte,0frags)
+  1118752pps 12905Mb/sec (12905923072bps) errors: 0

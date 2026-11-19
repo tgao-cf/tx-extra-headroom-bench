@@ -1,0 +1,13 @@
+
+
+
+@fwd[vethB0]: 6
+@fwd[ens1f1np1]: 79330
+@fwd_headroom_at_ip[vethB0, 16]: 6
+@fwd_headroom_at_ip[ens1f1np1, 270]: 79330
+@out[vethB1]: 6
+@out[vethB0]: 79330
+@out_headroom_at_ip[vethB1, 16]: 6
+@out_headroom_at_ip[vethB0, 270]: 79330
+@vethB1_copy: 1
+@vethB1_xdp_rcv: 79331

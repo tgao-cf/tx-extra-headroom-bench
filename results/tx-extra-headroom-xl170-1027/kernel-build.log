@@ -1,4 +1,0 @@
-  SYNC    include/config/auto.conf.cmd
-  DESCEND objtool
-  DESCEND bpf/resolve_btfids
-Kernel: arch/x86/boot/bzImage is ready  (#2)

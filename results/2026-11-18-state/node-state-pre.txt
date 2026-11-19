@@ -1,0 +1,30 @@
+===== node0
+kernel 6.18.55-061855-generic | mitigations=off
+cpu Intel(R) Xeon(R) CPU E5-2640 v4 @ 2.40GHz | 20 cpus | smt=1
+governor schedutil | irqbalance inactive
+busy_poll 0 busy_read 0 rps_sock_flow_entries 0
+nic eno49np0 drv=mlx5_core carrier=1 speed=10000 ip=128.110.218.90/21
+    channels: 20 combined | qdisc: mq fq_codel 
+    coalesce: Adaptive RX: on TX: on rx-usecs:	8 rx-frames:	128 tx-usecs:	8 
+    rps_cpus(rx-0)=00000 ntuple_rules=0 offloads: generic-receive-offload: on ntuple-filters: off 
+nic eno50np1 drv=mlx5_core carrier= speed= ip=-
+nic ens1f0np0 drv=mlx5_core carrier= speed= ip=-
+nic ens1f1np1 drv=mlx5_core carrier=1 speed=25000 ip=10.0.1.1/24
+    channels: 20 combined | qdisc: mq fq_codel 
+    coalesce: Adaptive RX: on TX: on rx-usecs:	8 rx-frames:	128 tx-usecs:	8 
+    rps_cpus(rx-0)=00000 ntuple_rules=0 offloads: generic-receive-offload: on ntuple-filters: off 
+===== node1
+kernel 6.18.55-061855-generic | mitigations=off
+cpu Intel(R) Xeon(R) CPU E5-2640 v4 @ 2.40GHz | 20 cpus | smt=1
+governor schedutil | irqbalance inactive
+busy_poll 0 busy_read 0 rps_sock_flow_entries 0
+nic eno49np0 drv=mlx5_core carrier=1 speed=10000 ip=128.110.218.101/21
+    channels: 20 combined | qdisc: mq fq_codel 
+    coalesce: Adaptive RX: on TX: on rx-usecs:	8 rx-frames:	128 tx-usecs:	8 
+    rps_cpus(rx-0)=00000 ntuple_rules=0 offloads: generic-receive-offload: on ntuple-filters: off 
+nic eno50np1 drv=mlx5_core carrier= speed= ip=-
+nic ens1f0np0 drv=mlx5_core carrier= speed= ip=-
+nic ens1f1np1 drv=mlx5_core carrier=1 speed=25000 ip=10.0.1.2/24
+    channels: 20 combined | qdisc: mq fq_codel 
+    coalesce: Adaptive RX: on TX: on rx-usecs:	8 rx-frames:	128 tx-usecs:	8 
+    rps_cpus(rx-0)=00000 ntuple_rules=0 offloads: generic-receive-offload: on ntuple-filters: off 

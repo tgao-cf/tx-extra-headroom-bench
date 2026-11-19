@@ -1,0 +1,14 @@
+
+
+@expand[vethB0, skb_expand_head]: 450833
+@expand[vethB1, skb_expand_head]: 676471
+
+
+@out[vethB0]: 450833
+@out[vethB1]: 676471
+@out_headroom_at_ip[vethB1, 196]: 2
+@out_headroom_at_ip[vethB0, 196]: 2
+@out_headroom_at_ip[vethB0, 204]: 450831
+@out_headroom_at_ip[vethB1, 204]: 676469
+@vethB1_copy: 450834
+@vethB1_xdp_rcv: 450834

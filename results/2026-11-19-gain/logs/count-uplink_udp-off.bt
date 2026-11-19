@@ -1,0 +1,18 @@
+
+
+@expand[vethB0, ip_forward]: 3
+@expand[ens1f1np1, bpf_skb_adjust_room]: 1063464
+@fwd[ens1f1np1]: 5
+@fwd[vethB0]: 1063471
+@fwd_headroom_at_ip[vethB0, 196]: 1
+@fwd_headroom_at_ip[ens1f1np1, 270]: 5
+@fwd_headroom_at_ip[vethB0, 204]: 6
+@fwd_headroom_at_ip[vethB0, 16]: 1063464
+@out[vethB0]: 5
+@out[vethB1]: 1063471
+@out_headroom_at_ip[vethB1, 196]: 1
+@out_headroom_at_ip[vethB0, 270]: 5
+@out_headroom_at_ip[vethB1, 204]: 6
+@out_headroom_at_ip[vethB1, 16]: 1063464
+@vethB1_copy: 0
+@vethB1_xdp_rcv: 0
